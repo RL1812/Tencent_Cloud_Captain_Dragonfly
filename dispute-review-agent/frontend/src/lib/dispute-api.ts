@@ -8,7 +8,15 @@ import type {
   CreateDisputeDTO,
   DashboardStats,
   NewEvidence,
+  Recommendation,
 } from '../types/dispute';
+
+export interface UploadedFile {
+  fileName: string;
+  fileUrl: string;
+  mimeType: string;
+  sizeBytes: number;
+}
 
 export const disputeApi = {
   getAll: () =>
@@ -34,6 +42,27 @@ export const disputeApi = {
   addEvidence: (id: string, dto: NewEvidence) =>
     apiClient
       .post<{ data: DisputeCase }>(`/disputes/${id}/evidence`, dto)
+      .then((r) => r.data.data),
+
+  uploadFile: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return apiClient
+      .post<{ data: UploadedFile }>('/uploads', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000,
+      })
+      .then((r) => r.data.data);
+  },
+
+  importDataset: (dataset: unknown) =>
+    apiClient
+      .post<{ data: DisputeCase }>('/disputes/import-dataset', dataset)
+      .then((r) => r.data.data),
+
+  override: (id: string, recommendation: Recommendation, reason: string) =>
+    apiClient
+      .post<{ data: DisputeCase }>(`/disputes/${id}/override`, { recommendation, reason })
       .then((r) => r.data.data),
 
   review: (id: string) =>

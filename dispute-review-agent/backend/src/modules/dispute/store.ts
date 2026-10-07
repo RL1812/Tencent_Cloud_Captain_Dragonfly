@@ -8,7 +8,12 @@ import type {
   DashboardStats,
   EvidenceItem,
   NewEvidence,
+  Recommendation,
 } from './types';
+import type { SampleDataset } from './agents/dataset';
+
+/** Below this Judge confidence, the case goes to a human reviewer. */
+export const ESCALATION_THRESHOLD = 60;
 
 let counter = 1000;
 let evidenceCounter = 0;
@@ -200,21 +205,25 @@ export const disputeStore = {
     return cases.find((c) => c.id === id);
   },
 
-  create(dto: CreateDisputeDTO): DisputeCase {
+  create(
+    dto: CreateDisputeDTO,
+    opts: { caseNumber?: string; dataset?: SampleDataset; createdAt?: string } = {}
+  ): DisputeCase {
     const now = new Date().toISOString();
     const newCase: DisputeCase = {
       id: generateId(),
-      caseNumber: generateCaseNumber(),
+      caseNumber: opts.caseNumber ?? generateCaseNumber(),
       status: 'pending',
       priority: dto.priority,
       type: dto.type,
       title: dto.title,
-      createdAt: now,
+      createdAt: opts.createdAt ?? now,
       updatedAt: now,
       driver: dto.driver,
       passenger: dto.passenger,
       trip: dto.trip,
       evidence: dto.evidence.map((e) => makeEvidence(e)),
+      dataset: opts.dataset,
     };
     cases.push(newCase);
     return newCase;
@@ -230,10 +239,43 @@ export const disputeStore = {
 
   updateReview(id: string, review: DisputeCase['review']): DisputeCase | undefined {
     const c = cases.find((c) => c.id === id);
-    if (!c) return undefined;
+    if (!c || !review) return undefined;
     c.review = review;
-    c.status = 'resolved';
+    c.humanOverride = undefined;
+    const failed = review.mode === 'fallback';
+    const lowConfidence =
+      review.recommendation === 'inconclusive' ||
+      review.confidenceScore < ESCALATION_THRESHOLD;
+    if (failed) {
+      // Review could not run: stay open for a retry, nothing to escalate
+      c.escalation = { needsHuman: false, reason: 'AI 审查未能完成，可重新审查' };
+      c.status = 'pending';
+    } else if (lowConfidence) {
+      c.escalation = {
+        needsHuman: true,
+        reason:
+          review.recommendation === 'inconclusive'
+            ? '法官无法判定，需人工介入'
+            : `法官置信度 ${review.confidenceScore}% 低于阈值 ${ESCALATION_THRESHOLD}%，需人工介入`,
+      };
+      c.status = 'under_review';
+    } else {
+      c.escalation = { needsHuman: false, reason: '' };
+      c.status = 'resolved';
+    }
     c.updatedAt = new Date().toISOString();
+    return c;
+  },
+
+  /** A human reviewer's decision; closes the case and records it for later learning. */
+  override(id: string, recommendation: Recommendation, reason: string): DisputeCase | undefined {
+    const c = cases.find((c) => c.id === id);
+    if (!c) return undefined;
+    const now = new Date().toISOString();
+    c.humanOverride = { recommendation, reason, decidedAt: now };
+    c.escalation = { needsHuman: false, reason: '已由人工裁决' };
+    c.status = 'resolved';
+    c.updatedAt = now;
     return c;
   },
 

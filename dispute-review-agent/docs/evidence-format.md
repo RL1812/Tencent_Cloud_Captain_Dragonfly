@@ -21,7 +21,7 @@
 
 | 字段 | 取值 |
 |---|---|
-| `party` | `driver`(司机)· `rider`(乘客) |
+| `party` | `driver`(司机)· `rider`(乘客)· `platform`(平台系统记录:GPS、App 事件、政策) |
 | `kind` | `text`(文字说明)· `chat`(聊天记录)· `gps`(GPS 数据)· `payment`(付款记录)· `photo`(照片) |
 
 提交时客户端只需要传 `party`、`kind`、`title`、`content`,`id` 和 `uploadedAt` 由服务端生成。
@@ -30,7 +30,14 @@
 - `POST /api/disputes`:创建案件,`evidence` 为数组(至少 1 条)
 - `POST /api/disputes/:id/evidence`:司机或乘客补充证据,body 为 `{ party, kind, title, content }`
 - `GET /api/disputes/:id`:返回案件,含 `evidence` 数组
-- `POST /api/disputes/:id/review`:触发 AI 审查
+- `POST /api/uploads`:上传文件(multipart 字段 `file`),返回 `{ fileName, fileUrl, mimeType }`,再放进证据的同名字段
+- `POST /api/disputes/import-dataset`:导入样例数据集(DISP-002 的 JSON),生成案件并保留原始数据集
+- `POST /api/disputes/:id/review`:触发三个 agent 审查。返回的案件含 `review`(法官裁决)和 `review.advocateSubmissions`(骑手/司机代理陈词)
+- `POST /api/disputes/:id/override`:人工裁决,body 为 `{ recommendation, reason }`
+
+## 转人工
+法官置信度低于 60%(`ESCALATION_THRESHOLD`)或无法判定时,案件的 `escalation.needsHuman` 为 `true`,状态为「审查中」,等待人工裁决。人工裁决写入 `humanOverride`(含 AI 原裁决对照),供后续反馈学习使用。
+模型不可用时 `review.mode` 为 `fallback`,案件保持「待审查」,可重新审查。
 
 ## 给各部分的提示
 - **测试数据(第④部分):** 案件的证据请按上面格式写,GPS、聊天记录以文本形式放在 `content` 里。

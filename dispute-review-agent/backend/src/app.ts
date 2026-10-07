@@ -9,6 +9,7 @@ import { errorHandler } from './middleware/errorHandler'
 import { httpLogger } from './middleware/logger'
 import { systemRouter } from './modules/system'
 import { disputeRouter } from './modules/dispute/routes'
+import { uploadsRouter } from './modules/dispute/uploads'
 import { knowledgeRouter } from './modules/knowledge/routes'
 
 export const createApp = (): Application => {
@@ -34,6 +35,9 @@ export const createApp = (): Application => {
 
   // Dispute Review Agent routes
   app.use(`${env.API_PREFIX}/disputes`, disputeRouter)
+
+  // Evidence file uploads (photos, PDFs, any file)
+  app.use(`${env.API_PREFIX}/uploads`, uploadsRouter)
 
   // Knowledge base: uploads, company records, vector search, RAG Q&A
   app.use(`${env.API_PREFIX}/knowledge`, knowledgeRouter)

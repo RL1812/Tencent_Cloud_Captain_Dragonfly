@@ -159,6 +159,14 @@ export default function Dashboard() {
                       >
                         {statusLabels[c.status]}
                       </Badge>
+                      {c.escalation?.needsHuman && (
+                        <Badge
+                          variant="outline"
+                          className="ml-1.5 border-amber-300 bg-amber-50 text-amber-700"
+                        >
+                          待人工
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDateTime(c.createdAt)}

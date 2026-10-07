@@ -23,10 +23,18 @@ import {
   BookOpen,
   Lightbulb,
   FileSearch,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  AgentTranscript,
+  EscalationPanel,
+  FallbackNotice,
+  HumanDecisionCard,
+  JudgeSources,
+} from '@/components/AgentReview';
 import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
 import {
@@ -40,9 +48,10 @@ import {
   confidenceColor,
   confidenceBarColor,
   formatDateTime,
+  formatFare,
 } from '@/lib/dispute-utils';
 import { cn } from '@/lib/utils';
-import type { DisputeCase, AIReview, NewEvidence, Party } from '@/types/dispute';
+import type { DisputeCase, AIReview, NewEvidence, Party, Recommendation } from '@/types/dispute';
 
 // --- Party Card ---
 function PartyCard({ title, party, icon: Icon }: { title: string; party: Party; icon: React.ElementType }) {
@@ -194,6 +203,8 @@ function AIReviewContent({ review }: { review: AIReview }) {
         </CardContent>
       </Card>
 
+      <JudgeSources review={review} />
+
       {/* Policy References */}
       <Card>
         <CardHeader className="pb-3">
@@ -298,6 +309,19 @@ export default function CaseDetail() {
     },
   });
 
+  const overrideMutation = useMutation({
+    mutationFn: ({ rec, reason }: { rec: Recommendation; reason: string }) =>
+      disputeApi.override(id!, rec, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispute', id] });
+      queryClient.invalidateQueries({ queryKey: ['disputes'] });
+      toast.success('人工裁决已记录');
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : '提交失败');
+    },
+  });
+
   if (isLoading || !caseData) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -354,7 +378,7 @@ export default function CaseDetail() {
             <TripDetail icon={MapPin} label="终点" value={c.trip.dropoffLocation} />
             <TripDetail icon={Clock} label="上车时间" value={formatDateTime(c.trip.pickupTime)} />
             <TripDetail icon={Clock} label="下车时间" value={formatDateTime(c.trip.dropoffTime)} />
-            <TripDetail icon={DollarSign} label="车费" value={`¥${c.trip.fare}`} />
+            <TripDetail icon={DollarSign} label="车费" value={formatFare(c.trip.fare, c.trip.currency)} />
             <TripDetail icon={RouteIcon} label="距离" value={`${c.trip.distance} km`} />
             <TripDetail icon={Car} label="车型" value={c.trip.vehicleModel} />
             <TripDetail icon={Car} label="车牌" value={c.trip.plateNumber} />
@@ -375,6 +399,40 @@ export default function CaseDetail() {
           />
         </CardContent>
       </Card>
+
+      {c.dataset != null && (
+        <p className="text-xs text-muted-foreground mb-4">
+          此案件由样例数据集导入，AI 按原始数据集审查；导入后补充的证据不参与审查。
+        </p>
+      )}
+
+      {/* Multi-agent process */}
+      {c.review?.advocateSubmissions && !reviewMutation.isPending && (
+        <>
+          <div className="flex justify-end mb-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => reviewMutation.mutate()}
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              重新审查
+            </Button>
+          </div>
+          <FallbackNotice review={c.review} />
+          <AgentTranscript review={c.review} />
+        </>
+      )}
+
+      {/* Human escalation / decision */}
+      {c.escalation?.needsHuman && !reviewMutation.isPending && (
+        <EscalationPanel
+          reason={c.escalation.reason}
+          pending={overrideMutation.isPending}
+          onSubmit={(rec, reason) => overrideMutation.mutate({ rec, reason })}
+        />
+      )}
+      <HumanDecisionCard c={c} />
 
       {/* AI Review Section */}
       {reviewMutation.isPending ? (
