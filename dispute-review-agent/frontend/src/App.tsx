@@ -8,6 +8,7 @@ import { Layout } from "@/components/Layout";
 import Dashboard from "./pages/Dashboard";
 import SubmitCase from "./pages/SubmitCase";
 import CaseDetail from "./pages/CaseDetail";
+import Precedents from "./pages/Precedents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -33,9 +34,10 @@ function App() {
         <BrowserRouter>
           <Layout>
             <AnimatedRoutes>
-              <Route path="/" data-genie-title="仪表盘" data-genie-key="Dashboard" element={<PageTransition transition="slide-up"><Dashboard /></PageTransition>} />
-              <Route path="/submit" data-genie-title="提交案件" data-genie-key="Submit" element={<PageTransition transition="slide-up"><SubmitCase /></PageTransition>} />
-              <Route path="/cases/:id" data-genie-title="案件详情" data-genie-key="CaseDetail" element={<PageTransition transition="slide-up"><CaseDetail /></PageTransition>} />
+              <Route path="/" data-genie-title="Dashboard" data-genie-key="Dashboard" element={<PageTransition transition="slide-up"><Dashboard /></PageTransition>} />
+              <Route path="/submit" data-genie-title="Submit case" data-genie-key="Submit" element={<PageTransition transition="slide-up"><SubmitCase /></PageTransition>} />
+              <Route path="/cases/:id" data-genie-title="Case detail" data-genie-key="CaseDetail" element={<PageTransition transition="slide-up"><CaseDetail /></PageTransition>} />
+              <Route path="/precedents" data-genie-title="Precedents" data-genie-key="Precedents" element={<PageTransition transition="slide-up"><Precedents /></PageTransition>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" data-genie-key="NotFound" data-genie-title="Not Found" element={<PageTransition transition="fade"><NotFound /></PageTransition>} />
             </AnimatedRoutes>

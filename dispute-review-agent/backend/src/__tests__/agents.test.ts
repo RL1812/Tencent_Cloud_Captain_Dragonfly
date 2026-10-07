@@ -9,6 +9,8 @@ import { sampleDatasetSchema } from '../modules/dispute/agents/dataset';
 import { runRiderAdvocate } from '../modules/dispute/agents/rider-advocate';
 import { reviewDispute } from '../modules/dispute/agents/orchestrator';
 import { formatCaseContext, parseJsonObject, sourceIndex } from '../modules/dispute/agents/shared';
+import { judgeChecklist } from '../modules/dispute/agents/checklist';
+import { precedentStore } from '../modules/dispute/precedents';
 
 jest.mock('../lib/llm-chat', () => ({ chatCompletion: jest.fn() }));
 const chat = jest.mocked(chatCompletion);
@@ -48,6 +50,9 @@ const judge = {
   confidenceScore: 50, confidenceReasoning: 'Timer records differ.',
   sourceRefs: ['/app_events/5', '/trip_data/driver_wait_start'],
   missingEvidence: ['Authoritative wait-start basis.'],
+  checklist: judgeChecklist(dataset).map(({ id }) => ({
+    id, finding: 'Recorded.', conflict: id === 'C2', sourceRefs: ['/trip_data/driver_wait_start'],
+  })),
 };
 
 beforeEach(() => chat.mockReset());
@@ -74,6 +79,15 @@ test('invalid coordinates, IDs and timestamp formats are rejected before model c
   }).success).toBe(false);
 });
 
+test('a policy argument citing no supplied policy is dropped, not fatal', async () => {
+  chat.mockResolvedValue(JSON.stringify({ ...advocate, policyArguments: [
+    { argument: 'Not a policy', sourceRefs: ['/rider_profile'] }, ...advocate.policyArguments,
+  ] }));
+  const result = await runRiderAdvocate(dataset);
+  expect(result.mode).toBe('llm');
+  expect(result.policyArguments).toEqual(advocate.policyArguments);
+});
+
 test('a policy argument may cite the facts it applies the policy to', async () => {
   chat.mockResolvedValue(JSON.stringify({ ...advocate, policyArguments: [{
     argument: 'Wait exceeded the threshold.',
@@ -92,7 +106,6 @@ test('valid advocate output has role, dispute ID, provenance and evidence refere
 test.each([
   { ...advocate, supportingEvidence: [{ ...advocate.supportingEvidence[0], sourceRefs: ['/invented'] }] },
   { ...advocate, confidenceScore: 101 },
-  { ...advocate, policyArguments: [{ argument: 'Not a policy', sourceRefs: ['/rider_profile'] }] },
   {},
 ])('invalid model output yields an explicit fallback', async (output) => {
   chat.mockResolvedValue(JSON.stringify(output));
@@ -167,7 +180,7 @@ test('prior rulings, escalations and human decisions are hidden from the agents'
   const decided = {
     ...disputeStore.getById('case-001')!,
     escalation: { needsHuman: false, reason: 'decided' },
-    humanOverride: { recommendation: 'driver' as const, reason: 'human', decidedAt: '2024-12-11T00:00:00Z' },
+    humanOverride: { recommendation: 'driver' as const, reason: 'human', decidedAt: '2024-12-11T00:00:00Z', useAsPrecedent: true },
   };
   const context = JSON.parse(formatCaseContext(decided));
   for (const key of ['review', 'escalation', 'humanOverride', 'dataset']) {
@@ -182,4 +195,91 @@ test('model JSON is parsed from a code fence or surrounding prose', () => {
   expect(parseJsonObject('Here is the ruling:\n```json\n{"a":1}\n```\nDone.')).toEqual({ a: 1 });
   expect(parseJsonObject('Sure. {"a":{"b":2}} Hope this helps.')).toEqual({ a: { b: 2 } });
   expect(() => parseJsonObject('no json here')).toThrow();
+});
+
+test('the Judge must answer every checklist item; its answers carry the item text', async () => {
+  chat.mockResolvedValueOnce(JSON.stringify(advocate))
+    .mockResolvedValueOnce(JSON.stringify(advocate))
+    .mockResolvedValueOnce(JSON.stringify(judge));
+  const ok = await reviewDispute(dataset);
+  expect(ok.mode).toBe('llm');
+  expect(ok.checklist).toHaveLength(judgeChecklist(dataset).length);
+  expect(ok.checklist![1]).toMatchObject({ id: 'C2', conflict: true, item: judgeChecklist(dataset)[1].item });
+  const judgeInput = JSON.parse(chat.mock.calls[2][0][1].content);
+  expect(judgeInput.requiredChecklist.map((c: { id: string }) => c.id)).toEqual(judge.checklist.map((c) => c.id));
+
+  chat.mockReset();
+  chat.mockResolvedValueOnce(JSON.stringify(advocate))
+    .mockResolvedValueOnce(JSON.stringify(advocate))
+    .mockResolvedValueOnce(JSON.stringify({ ...judge, checklist: judge.checklist.slice(1) }));
+  expect(await reviewDispute(dataset)).toMatchObject({ mode: 'fallback', recommendation: 'inconclusive' });
+});
+
+test('a flagged conflict must be listed as unresolved', async () => {
+  chat.mockResolvedValueOnce(JSON.stringify(advocate))
+    .mockResolvedValueOnce(JSON.stringify(advocate))
+    .mockResolvedValueOnce(JSON.stringify({ ...judge, missingEvidence: [] }));
+  expect(await reviewDispute(dataset)).toMatchObject({ mode: 'fallback' });
+});
+
+describe('human decisions and precedents', () => {
+  const api = () => request(createApp());
+  const decide = (id: string, body: object) => api().post(`${env.API_PREFIX}/disputes/${id}/override`).send(body);
+  beforeEach(() => precedentStore.list().forEach((p) => precedentStore.remove(p.caseNumber)));
+
+  test('a human can decide any case, and the decision becomes a precedent on disk', async () => {
+    // case-002 has no AI review and is not escalated
+    const res = await decide('case-002', { recommendation: 'passenger', reason: 'GPS shows a 5 km detour.', decidedBy: 'Lee' }).expect(200);
+    expect(res.body.data).toMatchObject({ status: 'resolved', humanOverride: { recommendation: 'passenger', decidedBy: 'Lee', useAsPrecedent: true } });
+    expect(precedentStore.list()).toEqual([expect.objectContaining({
+      caseNumber: 'DR-2024-002', type: 'route_deviation', humanRecommendation: 'passenger', reason: 'GPS shows a 5 km detour.',
+    })]);
+    expect(JSON.parse(fs.readFileSync(process.env.PRECEDENTS_FILE!, 'utf8'))).toHaveLength(1);
+    const listed = await api().get(env.API_PREFIX + '/disputes/precedents').expect(200);
+    expect(listed.body.data[0].caseNumber).toBe('DR-2024-002');
+  });
+
+  test('a reason is required, and opting out of precedent removes it', async () => {
+    await decide('case-002', { recommendation: 'driver', reason: '  ' }).expect(400);
+    await decide('case-002', { recommendation: 'driver', reason: 'Navigation record supports the driver.' }).expect(200);
+    expect(precedentStore.list()).toHaveLength(1);
+    await decide('case-002', { recommendation: 'driver', reason: 'Revised.', useAsPrecedent: false }).expect(200);
+    expect(precedentStore.list()).toHaveLength(0);
+  });
+
+  test('the Judge sees same-type precedents but never the case under review', async () => {
+    const imported = await api().post(env.API_PREFIX + '/disputes/import-dataset').send(fixture);
+    await decide(imported.body.data.id, { recommendation: 'driver', reason: 'Driver waited past the threshold.' }).expect(200);
+    precedentStore.upsert({ ...precedentStore.list()[0], caseNumber: 'DISP-OLD', reason: 'Earlier no-show ruling.' });
+    precedentStore.upsert({ ...precedentStore.list()[0], caseNumber: 'ROUTE-1', type: 'route_deviation', reason: 'Other type.' });
+
+    chat.mockResolvedValueOnce(JSON.stringify(advocate))
+      .mockResolvedValueOnce(JSON.stringify(advocate))
+      .mockResolvedValueOnce(JSON.stringify(judge));
+    const result = await reviewDispute(dataset);
+    const judgeInput = JSON.parse(chat.mock.calls[2][0][1].content);
+    expect(judgeInput.humanPrecedents.map((p: { caseNumber: string }) => p.caseNumber)).toEqual(['DISP-OLD']);
+    expect(result.precedentsUsed).toEqual(['DISP-OLD']);
+    // Advocates get no precedents
+    expect(JSON.parse(chat.mock.calls[0][0][1].content).humanPrecedents).toBeUndefined();
+  });
+
+  test('a new AI review does not overturn a human decision; withdrawing it reopens the case', async () => {
+    await decide('case-003', { recommendation: 'shared', reason: 'Both parties contributed.' }).expect(200);
+    chat.mockRejectedValue(new Error('Unavailable'));
+    const reviewed = await api().post(`${env.API_PREFIX}/disputes/case-003/review`).send({}).expect(200);
+    expect(reviewed.body.data).toMatchObject({ status: 'resolved', humanOverride: { recommendation: 'shared' } });
+
+    const withdrawn = await api().delete(`${env.API_PREFIX}/disputes/case-003/override`).expect(200);
+    expect(withdrawn.body.data.humanOverride).toBeUndefined();
+    expect(withdrawn.body.data.status).toBe('pending');
+    expect(precedentStore.list()).toHaveLength(0);
+  });
+
+  test('deleting a precedent unmarks the case decision', async () => {
+    await decide('case-002', { recommendation: 'passenger', reason: 'Detour.' }).expect(200);
+    await api().delete(env.API_PREFIX + '/disputes/precedents/DR-2024-002').expect(204);
+    await api().delete(env.API_PREFIX + '/disputes/precedents/DR-2024-002').expect(404);
+    expect(disputeStore.getById('case-002')!.humanOverride!.useAsPrecedent).toBe(false);
+  });
 });

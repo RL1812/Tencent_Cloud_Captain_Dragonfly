@@ -68,7 +68,7 @@ export function getErrorMessage(error: unknown): string {
     if (Array.isArray(data?.errors) && data.errors.length > 0) {
       return data.errors
         .map((e: { field: string; message: string }) => `${e.field}: ${e.message}`)
-        .join('；');
+        .join('; ');
     }
     return data?.message || error.message || 'An error occurred';
   }

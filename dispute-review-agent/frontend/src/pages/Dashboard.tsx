@@ -70,15 +70,15 @@ export default function Dashboard() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">纠纷审查仪表盘</h1>
+          <h1 className="text-2xl font-bold">Dispute Review Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            滴滴司乘纠纷智能审查系统 — 案件总览与AI裁决
+            Driver–rider dispute review — case overview and AI rulings
           </p>
         </div>
         <Link to="/submit">
           <Button>
             <FilePlus className="w-4 h-4 mr-2" />
-            提交新案件
+            Submit new case
           </Button>
         </Link>
       </div>
@@ -86,25 +86,25 @@ export default function Dashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard
-          label="总案件数"
+          label="Total cases"
           value={stats?.total}
           icon={ClipboardList}
           iconClass="bg-blue-50 text-blue-600"
         />
         <StatCard
-          label="待审查"
+          label="Pending"
           value={stats?.pending}
           icon={Clock}
           iconClass="bg-amber-50 text-amber-600"
         />
         <StatCard
-          label="审查中"
+          label="Under review"
           value={stats?.underReview}
           icon={Search}
           iconClass="bg-purple-50 text-purple-600"
         />
         <StatCard
-          label="已裁决"
+          label="Resolved"
           value={stats?.resolved}
           icon={CheckCircle2}
           iconClass="bg-green-50 text-green-600"
@@ -114,7 +114,7 @@ export default function Dashboard() {
       {/* Case List */}
       <Card>
         <CardHeader>
-          <CardTitle>纠纷案件列表</CardTitle>
+          <CardTitle>Dispute cases</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -125,13 +125,13 @@ export default function Dashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>案件编号</TableHead>
-                  <TableHead className="min-w-[200px]">标题</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>优先级</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  <TableHead>Case no.</TableHead>
+                  <TableHead className="min-w-[200px]">Title</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -164,7 +164,7 @@ export default function Dashboard() {
                           variant="outline"
                           className="ml-1.5 border-amber-300 bg-amber-50 text-amber-700"
                         >
-                          待人工
+                          Needs human
                         </Badge>
                       )}
                     </TableCell>
@@ -174,7 +174,7 @@ export default function Dashboard() {
                     <TableCell className="text-right">
                       <Link to={`/cases/${c.id}`}>
                         <Button variant="ghost" size="sm">
-                          查看详情
+                          View details
                           <ArrowRight className="w-3.5 h-3.5 ml-1" />
                         </Button>
                       </Link>

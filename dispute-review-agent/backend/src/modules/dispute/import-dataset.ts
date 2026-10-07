@@ -24,13 +24,13 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
     if (e.content.trim()) evidence.push(e);
   };
 
-  add({ party: 'rider', kind: 'chat', title: '乘客聊天/通话记录', content: chatLines('rider') });
-  add({ party: 'driver', kind: 'chat', title: '司机聊天/通话记录', content: chatLines('driver') });
-  add({ party: 'platform', kind: 'chat', title: '系统通知', content: chatLines('system') });
+  add({ party: 'rider', kind: 'chat', title: 'Rider messages and calls', content: chatLines('rider') });
+  add({ party: 'driver', kind: 'chat', title: 'Driver messages and calls', content: chatLines('driver') });
+  add({ party: 'platform', kind: 'chat', title: 'System notifications', content: chatLines('system') });
   add({
     party: 'platform',
     kind: 'gps',
-    title: `GPS 轨迹（${data.gps_telemetry.length} 个点）`,
+    title: `GPS track (${data.gps_telemetry.length} points)`,
     content: data.gps_telemetry
       .map((p) => `[${clock(p.timestamp)}] ${p.lat}, ${p.lng} | ${p.speed_kmh} km/h | ${p.status}`)
       .join('\n'),
@@ -38,7 +38,7 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
   add({
     party: 'platform',
     kind: 'text',
-    title: 'App 事件记录',
+    title: 'App event log',
     content: data.app_events
       .map((e) => `[${clock(e.timestamp)}] ${e.event_type}: ${e.details}`)
       .join('\n'),
@@ -47,10 +47,10 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
   add({
     party: 'platform',
     kind: 'text',
-    title: '取消政策',
+    title: 'Cancellation policy',
     content:
-      `免费等待 ${p.free_wait_time_min} 分钟；超时取消费 ${p.cancellation_fee_after_wait}；` +
-      `爽约判定阈值 ${p.no_show_threshold_min} 分钟；费用归属：${p.fee_goes_to}`,
+      `Free wait ${p.free_wait_time_min} min; cancellation fee after the wait ${p.cancellation_fee_after_wait}; ` +
+      `no-show threshold ${p.no_show_threshold_min} min; fee goes to: ${p.fee_goes_to}`,
   });
 
   // "Honda HR-V (SGP 4521 M)" -> model + plate
@@ -65,7 +65,7 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
       name: data.driver_profile.name,
       id: data.driver_profile.driver_id,
       rating: data.driver_profile.avg_rating,
-      statement: '（数据集未提供司机陈述）',
+      statement: '(No driver statement in the dataset)',
     },
     passenger: {
       name: data.rider_profile.name,

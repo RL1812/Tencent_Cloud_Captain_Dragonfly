@@ -11,6 +11,7 @@ import type {
   Recommendation,
 } from './types';
 import type { SampleDataset } from './agents/dataset';
+import { precedentFromCase, precedentStore } from './precedents';
 
 /** Below this Judge confidence, the case goes to a human reviewer. */
 export const ESCALATION_THRESHOLD = 60;
@@ -241,42 +242,74 @@ export const disputeStore = {
     const c = cases.find((c) => c.id === id);
     if (!c || !review) return undefined;
     c.review = review;
-    c.humanOverride = undefined;
+    c.updatedAt = new Date().toISOString();
+    // A human decision stands: a new AI review is kept for reference, it does not reopen the case
+    if (c.humanOverride) {
+      c.status = 'resolved';
+      return c;
+    }
     const failed = review.mode === 'fallback';
     const lowConfidence =
       review.recommendation === 'inconclusive' ||
       review.confidenceScore < ESCALATION_THRESHOLD;
     if (failed) {
       // Review could not run: stay open for a retry, nothing to escalate
-      c.escalation = { needsHuman: false, reason: 'AI 审查未能完成，可重新审查' };
+      c.escalation = { needsHuman: false, reason: 'The AI review could not be completed; it can be re-run' };
       c.status = 'pending';
     } else if (lowConfidence) {
       c.escalation = {
         needsHuman: true,
         reason:
           review.recommendation === 'inconclusive'
-            ? '法官无法判定，需人工介入'
-            : `法官置信度 ${review.confidenceScore}% 低于阈值 ${ESCALATION_THRESHOLD}%，需人工介入`,
+            ? 'The Judge could not decide; a human reviewer must decide'
+            : `Judge confidence ${review.confidenceScore}% is below the ${ESCALATION_THRESHOLD}% threshold; a human reviewer must decide`,
       };
       c.status = 'under_review';
     } else {
       c.escalation = { needsHuman: false, reason: '' };
       c.status = 'resolved';
     }
+    return c;
+  },
+
+  /**
+   * A human reviewer decides the case — at any time, with or without an AI review,
+   * escalated or not, and again to revise an earlier decision. Closes the case and,
+   * when useAsPrecedent is set, keeps the decision for the AI Judge to learn from.
+   */
+  override(
+    id: string,
+    decision: { recommendation: Recommendation; reason: string; decidedBy?: string; useAsPrecedent: boolean }
+  ): DisputeCase | undefined {
+    const c = cases.find((c) => c.id === id);
+    if (!c) return undefined;
+    const now = new Date().toISOString();
+    c.humanOverride = { ...decision, decidedAt: now };
+    c.escalation = { needsHuman: false, reason: 'Decided by a human reviewer' };
+    c.status = 'resolved';
+    c.updatedAt = now;
+    if (decision.useAsPrecedent) precedentStore.upsert(precedentFromCase(c, c.humanOverride));
+    else precedentStore.remove(c.caseNumber);
+    return c;
+  },
+
+  /** Reverts a human decision; the case goes back to the AI result (or pending). */
+  clearOverride(id: string): DisputeCase | undefined {
+    const c = cases.find((c) => c.id === id);
+    if (!c?.humanOverride) return c;
+    c.humanOverride = undefined;
+    precedentStore.remove(c.caseNumber);
+    if (c.review) return this.updateReview(id, c.review);
+    c.escalation = undefined;
+    c.status = 'pending';
     c.updatedAt = new Date().toISOString();
     return c;
   },
 
-  /** A human reviewer's decision; closes the case and records it for later learning. */
-  override(id: string, recommendation: Recommendation, reason: string): DisputeCase | undefined {
-    const c = cases.find((c) => c.id === id);
-    if (!c) return undefined;
-    const now = new Date().toISOString();
-    c.humanOverride = { recommendation, reason, decidedAt: now };
-    c.escalation = { needsHuman: false, reason: '已由人工裁决' };
-    c.status = 'resolved';
-    c.updatedAt = now;
-    return c;
+  /** A precedent was deleted from the library: the case's decision no longer teaches the AI. */
+  unmarkPrecedent(caseNumber: string): void {
+    const c = cases.find((c) => c.caseNumber === caseNumber);
+    if (c?.humanOverride) c.humanOverride.useAsPrecedent = false;
   },
 
   setStatus(id: string, status: DisputeCase['status']): DisputeCase | undefined {

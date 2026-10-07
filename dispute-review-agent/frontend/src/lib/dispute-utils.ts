@@ -12,44 +12,44 @@ import type {
 } from '../types/dispute';
 
 export const typeLabels: Record<DisputeType, string> = {
-  route_deviation: '绕路',
-  no_show_charge: '爽约收费',
-  property_damage: '财物损坏',
-  safety_accident: '安全事故',
+  route_deviation: 'Route deviation',
+  no_show_charge: 'No-show charge',
+  property_damage: 'Property damage',
+  safety_accident: 'Safety incident',
 };
 
 export const evidencePartyLabels: Record<EvidenceParty, string> = {
-  driver: '司机',
-  rider: '乘客',
-  platform: '平台记录',
+  driver: 'Driver',
+  rider: 'Rider',
+  platform: 'Platform',
 };
 
 export const evidenceKindLabels: Record<EvidenceKind, string> = {
-  text: '文字说明',
-  chat: '聊天记录',
-  gps: 'GPS数据',
-  payment: '付款记录',
-  photo: '照片',
+  text: 'Note',
+  chat: 'Chat log',
+  gps: 'GPS data',
+  payment: 'Payment record',
+  photo: 'Photo',
 };
 
 export const priorityLabels: Record<DisputePriority, string> = {
-  low: '低',
-  medium: '中',
-  high: '高',
-  urgent: '紧急',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  urgent: 'Urgent',
 };
 
 export const statusLabels: Record<DisputeStatus, string> = {
-  pending: '待审查',
-  under_review: '审查中',
-  resolved: '已裁决',
+  pending: 'Pending',
+  under_review: 'Under review',
+  resolved: 'Resolved',
 };
 
 export const recommendationLabels: Record<Recommendation, string> = {
-  driver: '支持司机',
-  passenger: '支持乘客',
-  shared: '双方共担',
-  inconclusive: '无法判定',
+  driver: 'Driver upheld',
+  passenger: 'Rider upheld',
+  shared: 'Shared responsibility',
+  inconclusive: 'Inconclusive',
 };
 
 export function statusBadgeClass(status: DisputeStatus): string {

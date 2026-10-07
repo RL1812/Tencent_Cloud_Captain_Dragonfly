@@ -1,4 +1,4 @@
-# 司乘纠纷审查 Agent — Dispute Review Agent
+# Dispute Review Agent
 
 AI-assisted review of ride-hailing disputes between drivers and riders. Reviewers submit cases,
 upload evidence (PDFs, screenshots, photos, notes), pull company records, and ask questions that
@@ -19,14 +19,16 @@ flowchart LR
         DASH["Dashboard<br/>case list + stats"]
         SUBMIT["Submit case<br/>form · evidence · dataset import"]
         DETAIL["Case detail<br/>evidence · agent transcript ·<br/>AI report · human decision"]
+        PREC_UI["Precedents<br/>human decisions the AI learns from"]
     end
 
     subgraph API["Express API (backend/, :3000, /api)"]
-        DR["/disputes<br/>cases, evidence, review, override"]
+        DR["/disputes<br/>cases, evidence, review,<br/>human decision, precedents"]
         UP["/uploads<br/>evidence files"]
         KB["/knowledge<br/>documents, records, search, ask"]
         STORE[("Case store<br/>in memory")]
         ORCH["Agent orchestrator<br/>Rider Advocate · Driver Advocate · Judge"]
+        PSTORE[("Precedent store<br/>data/precedents.json")]
         LLM["LLM client<br/>lib/llm-chat.ts"]
         ING["Ingest pipeline<br/>parse → OCR → chunk → embed"]
         RAG["RAG<br/>vector search + cited answer"]
@@ -42,6 +44,8 @@ flowchart LR
     Browser -- "/api via Vite proxy" --> DR & UP
     DR <--> STORE
     DR --> ORCH --> LLM
+    DR <--> PSTORE
+    PSTORE -- "same-type examples" --> ORCH
     LLM --> GEMINI
     LLM -.-> TH
     UP --> DISK
@@ -55,9 +59,11 @@ flowchart LR
 | Component | Where | What it does |
 |---|---|---|
 | Dashboard / Submit / Case detail | `frontend/src/pages/` | Pages for listing cases, creating one (by form or by importing the DISP-002 dataset) and reviewing it |
-| Agent review UI | `frontend/src/components/AgentReview.tsx` | Both advocates' submissions, the Judge's cited sources, the escalation panel and the human decision |
+| Agent review UI | `frontend/src/components/AgentReview.tsx` | Both advocates' submissions, the Judge's checklist and cited sources, the precedents it used, and the human judge panel |
+| Precedents page | `frontend/src/pages/Precedents.tsx` | Lists the human decisions the AI Judge learns from; reviewers can delete any of them |
 | Dispute routes + case store | `backend/src/modules/dispute/` | Case CRUD, evidence, review and human override; cases live **in memory** and reset on restart |
-| Agents | `backend/src/modules/dispute/agents/` | Rider Advocate and Driver Advocate in parallel, then the Judge; every output is schema-checked and its citations verified |
+| Agents | `backend/src/modules/dispute/agents/` | Rider Advocate and Driver Advocate in parallel, then the Judge; every output is schema-checked and its citations verified. The Judge must answer a checklist for the dispute type (`checklist.ts`) |
+| Precedent store | `backend/src/modules/dispute/precedents.ts` | Human decisions marked "use as precedent", saved to `backend/data/precedents.json` so they survive restarts |
 | LLM client | `backend/src/lib/llm-chat.ts` | Gemini free tier (`gemini-3.8-flash`, then fallback models), or TokenHub when no Gemini key is set |
 | Evidence uploads | `backend/src/modules/dispute/uploads.ts` | Stores photos and PDFs attached to evidence. The agents see the file name, not the file contents |
 | Knowledge base | `backend/src/modules/knowledge/` | Parses, embeds and searches documents and company records, and answers questions with citations using local models. **API only**: it is not used by the agents and has no page in the UI yet |
@@ -84,14 +90,27 @@ flowchart TD
 
     RS & RF & DS & DF --> G{"Both advocates<br/>mode = llm?"}
     G -- no --> X["Inconclusive, mode = fallback<br/>Judge skipped"]
-    G -- yes --> J["Judge<br/>weighs both submissions against the original record"]
-    J --> JV{"Schema valid and<br/>sourceRefs exist?"}
+    P[("Human precedents<br/>up to 3, same dispute type,<br/>never this case")] --> J
+    G -- yes --> J["Judge<br/>weighs both submissions against the original record,<br/>answers the required checklist (C1, C2, …)"]
+    J --> JV{"Schema valid, sourceRefs exist,<br/>every checklist item answered,<br/>conflicts listed as unresolved?"}
     JV -- no --> X
-    JV -- yes --> OUT["Ruling: driver / passenger / shared / inconclusive<br/>+ confidence, cited sources, missing evidence,<br/>suggested actions, both advocate submissions"]
+    JV -- yes --> OUT["Ruling: driver / passenger / shared / inconclusive<br/>+ confidence, checklist, cited sources, missing evidence,<br/>suggested actions, precedents used, both advocate submissions"]
 ```
 
 The two advocates run in parallel and each sees the full record. The Judge only runs when both
-produced validated output, and no fallback ever picks a winner. Imported datasets are reviewed on
+produced validated output, and no fallback ever picks a winner.
+
+**The AI learns from human decisions without retraining.** When a reviewer decides a case and ticks
+"use as precedent", the decision and its reason are saved. The Judge is then shown up to 3 recent
+precedents of the same dispute type (`PRECEDENT_EXAMPLES`) to calibrate how it applies policy and
+weighs records against statements. Precedents are never treated as evidence, never cited, and a case
+is never shown its own earlier decision. The **Precedents** page lists them, and deleting one stops the AI
+using it.
+
+**The Judge must answer a checklist** before ruling: the known weak spots for each dispute type (for
+no-shows: arrival vs scheduled time, wait start under each basis, elapsed wait vs threshold, contact
+attempts, rider location) plus statement-vs-record and timestamp conflicts. A ruling that skips an
+item is rejected; each answer is shown with its citations and a conflict flag. Imported datasets are reviewed on
 the original JSON, so evidence added to such a case after import is not used. Agent inputs, outputs
 and failure rules: [`backend/src/modules/dispute/agents/README.md`](backend/src/modules/dispute/agents/README.md).
 
@@ -104,9 +123,18 @@ stateDiagram-v2
     under_review --> pending: review failed (mode = fallback), retry later
     under_review --> under_review: inconclusive or Judge confidence below 60% (escalated to a human)
     under_review --> resolved: Judge confidence 60% or more
-    under_review --> resolved: human decision (override)
-    resolved --> under_review: re-review
+    resolved --> under_review: re-review (no human decision yet)
+    pending --> resolved: human decision
+    under_review --> resolved: human decision
+    resolved --> resolved: human decision or revision
+    resolved --> pending: human decision withdrawn (no AI review)
 ```
+
+**Human judge.** A reviewer can decide any case at any time from its **Human review** panel, whether or not the
+AI has reviewed it or escalated it. The decision needs a reason and can be revised or withdrawn
+later. It overrides the AI: running the AI review again only updates the AI report shown for
+reference, and the case stays resolved. Withdrawing the decision puts the case back to the AI
+result (re-applying the confidence rule above), or to pending if the AI never reviewed it.
 
 ## Running locally
 
@@ -180,6 +208,7 @@ curl -X POST localhost:3000/api/knowledge/ask -H 'Content-Type: application/json
   all (Gemini or `TOKENHUB_API_KEY`) the review fails safely: inconclusive, and the case stays
   pending. The knowledge base does not need a key.
 - **Cases are kept in memory:** created and imported cases, reviews and human decisions are lost
-  when the backend restarts. Uploaded files and the knowledge base persist.
+  when the backend restarts. Precedents (`backend/data/precedents.json`), uploaded files and the
+  knowledge base persist.
 - **Company records** come from a mock of the internal API until `COMPANY_API_BASE_URL` is set.
 - If PostgreSQL is not running the app still works; only `/api/knowledge/*` returns 503.

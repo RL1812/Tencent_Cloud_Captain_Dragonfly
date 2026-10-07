@@ -10,6 +10,7 @@ import { reviewDispute } from './agents/orchestrator';
 import { sampleDatasetSchema } from './agents/dataset';
 import { datasetToCreateDTO } from './import-dataset';
 import { EVIDENCE_URL_PREFIX } from './uploads';
+import { precedentStore } from './precedents';
 import type { CreateDisputeDTO } from './types';
 
 export const disputeRouter: Router = Router();
@@ -74,7 +75,7 @@ const evidenceInputSchema = z.object({
   fileName: z.string().optional(),
   fileUrl: z
     .string()
-    .refine((u) => u.startsWith(EVIDENCE_URL_PREFIX) && !u.includes('..'), '附件地址无效')
+    .refine((u) => u.startsWith(EVIDENCE_URL_PREFIX) && !u.includes('..'), 'Invalid attachment URL')
     .optional(),
   mimeType: z.string().optional(),
 });
@@ -99,6 +100,23 @@ const createDisputeSchema = z.object({
 // ============================================
 
 /**
+ * GET /api/disputes/precedents — Human decisions the AI Judge learns from (newest first)
+ */
+disputeRouter.get('/precedents', async (_req: Request, res: Response) => {
+  res.json({ data: precedentStore.list() });
+});
+
+/**
+ * DELETE /api/disputes/precedents/:caseNumber — Stop the AI learning from a decision
+ */
+disputeRouter.delete('/precedents/:caseNumber', async (req: Request, res: Response) => {
+  const caseNumber = String(req.params.caseNumber);
+  if (!precedentStore.remove(caseNumber)) throw new AppError(404, 'Precedent not found');
+  disputeStore.unmarkPrecedent(caseNumber);
+  res.status(204).end();
+});
+
+/**
  * GET /api/disputes/stats — Dashboard statistics
  */
 disputeRouter.get('/stats', async (_req: Request, res: Response) => {
@@ -119,7 +137,7 @@ disputeRouter.get('/:id', async (req: Request, res: Response) => {
   const id = String(req.params.id);
   const dispute = disputeStore.getById(id);
   if (!dispute) {
-    throw new AppError(404, '案件不存在');
+    throw new AppError(404, 'Case not found');
   }
   res.json({ data: dispute });
 });
@@ -141,7 +159,7 @@ disputeRouter.post('/:id/evidence', async (req: Request, res: Response) => {
   const parsed = evidenceInputSchema.parse(req.body);
   const updated = disputeStore.addEvidence(id, parsed);
   if (!updated) {
-    throw new AppError(404, '案件不存在');
+    throw new AppError(404, 'Case not found');
   }
   res.status(201).json({ data: updated });
 });
@@ -153,10 +171,11 @@ disputeRouter.post('/:id/review', async (req: Request, res: Response) => {
   const id = String(req.params.id);
   const dispute = disputeStore.getById(id);
   if (!dispute) {
-    throw new AppError(404, '案件不存在');
+    throw new AppError(404, 'Case not found');
   }
 
-  // Mark as under review
+  // Mark as under review; a failure restores the previous status (e.g. a human-decided case stays resolved)
+  const previousStatus = dispute.status;
   disputeStore.setStatus(id, 'under_review');
 
   try {
@@ -166,28 +185,41 @@ disputeRouter.post('/:id/review', async (req: Request, res: Response) => {
     const updated = disputeStore.updateReview(id, review);
     res.json({ data: updated });
   } catch (error) {
-    // Revert status on failure
-    disputeStore.setStatus(id, 'pending');
+    disputeStore.setStatus(id, previousStatus);
     const message =
-      error instanceof Error ? error.message : 'AI审查失败，请稍后重试';
+      error instanceof Error ? error.message : 'AI review failed; please try again later';
     throw new AppError(500, message);
   }
 });
 
 /**
- * POST /api/disputes/:id/override — A human reviewer decides the case
+ * POST /api/disputes/:id/override — A human reviewer decides the case, at any time
+ * (also to revise an earlier decision). useAsPrecedent keeps it for the AI Judge.
  */
 const overrideSchema = z.object({
   recommendation: z.enum(['driver', 'passenger', 'shared', 'inconclusive']),
-  reason: z.string(),
+  // The reason is what the AI learns from, so it cannot be empty
+  reason: z.string().trim().min(1, 'Please give a reason for the decision').max(2000),
+  decidedBy: z.string().trim().max(100).optional().transform((v) => v || undefined),
+  useAsPrecedent: z.boolean().default(true),
 });
 
 disputeRouter.post('/:id/override', async (req: Request, res: Response) => {
   const id = String(req.params.id);
-  const { recommendation, reason } = overrideSchema.parse(req.body);
-  const updated = disputeStore.override(id, recommendation, reason);
+  const updated = disputeStore.override(id, overrideSchema.parse(req.body));
   if (!updated) {
-    throw new AppError(404, '案件不存在');
+    throw new AppError(404, 'Case not found');
+  }
+  res.json({ data: updated });
+});
+
+/**
+ * DELETE /api/disputes/:id/override — Withdraw a human decision (and its precedent)
+ */
+disputeRouter.delete('/:id/override', async (req: Request, res: Response) => {
+  const updated = disputeStore.clearOverride(String(req.params.id));
+  if (!updated) {
+    throw new AppError(404, 'Case not found');
   }
   res.json({ data: updated });
 });

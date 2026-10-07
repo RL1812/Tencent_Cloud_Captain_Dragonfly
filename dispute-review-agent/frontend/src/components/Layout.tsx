@@ -3,7 +3,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FilePlus, Scale, ShieldCheck } from 'lucide-react';
+import { BookMarked, LayoutDashboard, FilePlus, Scale, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -11,8 +11,9 @@ interface LayoutProps {
 }
 
 const navItems = [
-  { to: '/', label: '案件仪表盘', icon: LayoutDashboard },
-  { to: '/submit', label: '提交案件', icon: FilePlus },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/submit', label: 'Submit case', icon: FilePlus },
+  { to: '/precedents', label: 'Precedents', icon: BookMarked },
 ];
 
 export function Layout({ children }: LayoutProps) {
@@ -30,10 +31,10 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <div>
               <div className="font-bold text-sm text-sidebar-foreground">
-                纠纷审查 Agent
+                Dispute Review Agent
               </div>
               <div className="text-xs text-sidebar-foreground/50">
-                智能裁决系统
+                AI ruling system
               </div>
             </div>
           </div>
@@ -68,7 +69,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-2 text-xs text-sidebar-foreground/50">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>AI 审查系统 v1.0</span>
+            <span>AI review system v1.0</span>
           </div>
         </div>
       </aside>

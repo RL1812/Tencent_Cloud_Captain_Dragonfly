@@ -45,10 +45,10 @@ export function EvidenceList({
         return (
           <div key={party}>
             <p className="text-sm font-medium mb-2">
-              {party === 'platform' ? '平台记录' : `${evidencePartyLabels[party]}方证据`}（{group.length}）
+              {party === 'platform' ? 'Platform records' : `${evidencePartyLabels[party]} evidence`} ({group.length})
             </p>
             {group.length === 0 ? (
-              <p className="text-sm text-muted-foreground">暂无证据</p>
+              <p className="text-sm text-muted-foreground">No evidence yet</p>
             ) : (
               <div className="space-y-2">
                 {group.map(({ item, index }) => (
@@ -95,7 +95,7 @@ export function EvidenceList({
                           className="mt-2 flex items-center gap-1.5 text-primary hover:underline break-all"
                         >
                           <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
-                          {item.fileName || '查看附件'}
+                          {item.fileName || 'View attachment'}
                         </a>
                       ))}
                   </div>
@@ -163,7 +163,7 @@ export function EvidenceForm({
     <div className="rounded-md border border-dashed p-4 space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <Label>上传方</Label>
+          <Label>Submitted by</Label>
           <Select value={party} onValueChange={(v) => setParty(v as EvidenceParty)}>
             <SelectTrigger className="mt-1.5">
               <SelectValue />
@@ -178,7 +178,7 @@ export function EvidenceForm({
           </Select>
         </div>
         <div>
-          <Label>证据类型</Label>
+          <Label>Evidence type</Label>
           <Select value={kind} onValueChange={(v) => setKind(v as EvidenceKind)}>
             <SelectTrigger className="mt-1.5">
               <SelectValue />
@@ -193,27 +193,27 @@ export function EvidenceForm({
           </Select>
         </div>
         <div>
-          <Label>标题</Label>
+          <Label>Title</Label>
           <Input
             className="mt-1.5"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="例：与司机的聊天记录"
+            placeholder="e.g. Chat with the driver"
           />
         </div>
       </div>
       <div>
-        <Label>内容</Label>
+        <Label>Content</Label>
         <Textarea
           className="mt-1.5"
           rows={3}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="粘贴聊天记录、GPS 数据点、付款明细，或文字说明"
+          placeholder="Paste a chat log, GPS points, payment details or a written description"
         />
       </div>
       <div>
-        <Label>附件（照片、PDF 等，可选）</Label>
+        <Label>Attachment (photo, PDF, etc., optional)</Label>
         <input
           ref={fileInput}
           type="file"
@@ -233,7 +233,7 @@ export function EvidenceForm({
         ) : (
           <Plus className="w-3.5 h-3.5 mr-1" />
         )}
-        {uploading ? '上传中...' : '添加证据'}
+        {uploading ? 'Uploading...' : 'Add evidence'}
       </Button>
     </div>
   );

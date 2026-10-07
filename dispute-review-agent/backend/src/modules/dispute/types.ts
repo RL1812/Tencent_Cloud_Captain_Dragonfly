@@ -90,6 +90,19 @@ export interface AIReview {
   sourceRefs?: string[];
   missingEvidence?: string[];
   advocateSubmissions?: { rider: AdvocateSubmission; driver: AdvocateSubmission };
+  /** The Judge's answer to each required check (see agents/checklist.ts) */
+  checklist?: ChecklistAnswer[];
+  /** Case numbers of the human precedents shown to the Judge */
+  precedentsUsed?: string[];
+}
+
+export interface ChecklistAnswer {
+  id: string;
+  item: string;
+  finding: string;
+  /** True when the sources disagree on this point */
+  conflict: boolean;
+  sourceRefs: string[];
 }
 
 /** Set when the Judge is not confident enough and a human should decide. */
@@ -98,11 +111,14 @@ export interface Escalation {
   reason: string;
 }
 
-/** A human reviewer's decision, overriding the Judge. */
+/** A human reviewer's decision; it overrides the Judge and survives re-reviews. */
 export interface HumanOverride {
   recommendation: Recommendation;
   reason: string;
   decidedAt: string;
+  decidedBy?: string;
+  /** Kept as a precedent the AI Judge learns from */
+  useAsPrecedent: boolean;
 }
 
 export interface DisputeCase {

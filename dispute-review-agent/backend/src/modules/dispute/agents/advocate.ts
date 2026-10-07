@@ -2,7 +2,7 @@ import { chatCompletion } from '../../../lib/llm-chat';
 import { advocateOutputSchema, type AgentInput, type AdvocateCase, type AdvocateRole } from './contracts';
 import {
   checkAdvocateSources, disputeId, evidenceInstructions,
-  formatCaseContext, parseJsonObject, validateInput,
+  formatCaseContext, groundedPolicyArguments, parseJsonObject, validateInput,
 } from './shared';
 import { createLogger } from '../../../config/logger';
 
@@ -32,8 +32,11 @@ Use empty arrays when there is no evidence or supplied policy. Never fabricate a
       { role: 'system', content: prompt },
       { role: 'user', content: formatCaseContext(record) },
     ], { temperature: 0.2, max_tokens: 2600 });
+    const parsed = advocateOutputSchema.parse(parseJsonObject(text));
+    const { kept, dropped } = groundedPolicyArguments(parsed.policyArguments, record);
+    if (dropped) logger.warn({ agent, dropped }, 'Dropped policy arguments that cite no supplied policy');
     const output: AdvocateCase = {
-      ...advocateOutputSchema.parse(parseJsonObject(text)),
+      ...parsed, policyArguments: kept,
       agent, disputeId: disputeId(record), mode: 'llm',
     };
     checkAdvocateSources(output, record);

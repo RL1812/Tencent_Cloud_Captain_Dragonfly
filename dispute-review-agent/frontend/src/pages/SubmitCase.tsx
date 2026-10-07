@@ -62,7 +62,7 @@ export default function SubmitCase() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['disputes'] });
       queryClient.invalidateQueries({ queryKey: ['dispute-stats'] });
-      toast.success('案件创建成功');
+      toast.success('Case created');
       navigate(`/cases/${data.id}`);
     },
     onError: (error) => {
@@ -128,12 +128,12 @@ export default function SubmitCase() {
       {/* Page Header */}
       <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
         <button onClick={() => navigate('/')} className="hover:text-foreground">
-          仪表盘
+          Dashboard
         </button>
         <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-foreground">提交案件</span>
+        <span className="text-foreground">Submit case</span>
       </div>
-      <h1 className="text-2xl font-bold mb-6">提交新纠纷案件</h1>
+      <h1 className="text-2xl font-bold mb-6">Submit a new dispute</h1>
 
       <DatasetImport />
 
@@ -141,22 +141,22 @@ export default function SubmitCase() {
         {/* Section 1: Case Info */}
         <Card>
           <CardHeader>
-            <CardTitle>案件信息</CardTitle>
+            <CardTitle>Case</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="title">案件标题</Label>
+              <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
                 value={form.title}
                 onChange={(e) => updateField('title', e.target.value)}
-                placeholder="例：乘客投诉司机绕路导致车费增加"
+                placeholder="e.g. Rider says the driver took a longer route and overcharged"
                 className="mt-1.5"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label>纠纷类型</Label>
+                <Label>Dispute type</Label>
                 <Select
                   value={form.type}
                   onValueChange={(v) => updateField('type', v as DisputeType)}
@@ -174,7 +174,7 @@ export default function SubmitCase() {
                 </Select>
               </div>
               <div>
-                <Label>优先级</Label>
+                <Label>Priority</Label>
                 <Select
                   value={form.priority}
                   onValueChange={(v) =>
@@ -200,22 +200,22 @@ export default function SubmitCase() {
         {/* Section 2: Driver Info */}
         <Card>
           <CardHeader>
-            <CardTitle>司机信息</CardTitle>
+            <CardTitle>Driver</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="drv-name">姓名</Label>
+                <Label htmlFor="drv-name">Name</Label>
                 <Input
                   id="drv-name"
                   value={form.driver.name}
                   onChange={(e) => updateDriver('name', e.target.value)}
                   className="mt-1.5"
-                  placeholder="张师傅"
+                  placeholder="e.g. Ahmad Tan"
                 />
               </div>
               <div>
-                <Label htmlFor="drv-id">工号</Label>
+                <Label htmlFor="drv-id">Driver ID</Label>
                 <Input
                   id="drv-id"
                   value={form.driver.id}
@@ -225,7 +225,7 @@ export default function SubmitCase() {
                 />
               </div>
               <div>
-                <Label htmlFor="drv-rating">评分 (0-5)</Label>
+                <Label htmlFor="drv-rating">Rating (0-5)</Label>
                 <Input
                   id="drv-rating"
                   type="number"
@@ -241,14 +241,14 @@ export default function SubmitCase() {
               </div>
             </div>
             <div>
-              <Label htmlFor="drv-stmt">司机陈述</Label>
+              <Label htmlFor="drv-stmt">Driver statement</Label>
               <Textarea
                 id="drv-stmt"
                 value={form.driver.statement}
                 onChange={(e) => updateDriver('statement', e.target.value)}
                 className="mt-1.5"
                 rows={4}
-                placeholder="请描述司机对事件的陈述..."
+                placeholder="The driver's account of what happened..."
               />
             </div>
           </CardContent>
@@ -257,22 +257,22 @@ export default function SubmitCase() {
         {/* Section 3: Passenger Info */}
         <Card>
           <CardHeader>
-            <CardTitle>乘客信息</CardTitle>
+            <CardTitle>Rider</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="pas-name">姓名</Label>
+                <Label htmlFor="pas-name">Name</Label>
                 <Input
                   id="pas-name"
                   value={form.passenger.name}
                   onChange={(e) => updatePassenger('name', e.target.value)}
                   className="mt-1.5"
-                  placeholder="李先生"
+                  placeholder="e.g. Mei Ling"
                 />
               </div>
               <div>
-                <Label htmlFor="pas-id">账号</Label>
+                <Label htmlFor="pas-id">Rider ID</Label>
                 <Input
                   id="pas-id"
                   value={form.passenger.id}
@@ -282,7 +282,7 @@ export default function SubmitCase() {
                 />
               </div>
               <div>
-                <Label htmlFor="pas-rating">评分 (0-5)</Label>
+                <Label htmlFor="pas-rating">Rating (0-5)</Label>
                 <Input
                   id="pas-rating"
                   type="number"
@@ -298,14 +298,14 @@ export default function SubmitCase() {
               </div>
             </div>
             <div>
-              <Label htmlFor="pas-stmt">乘客陈述</Label>
+              <Label htmlFor="pas-stmt">Rider statement</Label>
               <Textarea
                 id="pas-stmt"
                 value={form.passenger.statement}
                 onChange={(e) => updatePassenger('statement', e.target.value)}
                 className="mt-1.5"
                 rows={4}
-                placeholder="请描述乘客对事件的陈述..."
+                placeholder="The rider's account of what happened..."
               />
             </div>
           </CardContent>
@@ -314,12 +314,12 @@ export default function SubmitCase() {
         {/* Section 4: Trip Info */}
         <Card>
           <CardHeader>
-            <CardTitle>行程信息</CardTitle>
+            <CardTitle>Trip</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="pickup">起点</Label>
+                <Label htmlFor="pickup">Pickup</Label>
                 <Input
                   id="pickup"
                   value={form.trip.pickupLocation}
@@ -327,11 +327,11 @@ export default function SubmitCase() {
                     updateTrip('pickupLocation', e.target.value)
                   }
                   className="mt-1.5"
-                  placeholder="例：南山科技园"
+                  placeholder="e.g. Tiong Bahru Plaza"
                 />
               </div>
               <div>
-                <Label htmlFor="dropoff">终点</Label>
+                <Label htmlFor="dropoff">Drop-off</Label>
                 <Input
                   id="dropoff"
                   value={form.trip.dropoffLocation}
@@ -339,13 +339,13 @@ export default function SubmitCase() {
                     updateTrip('dropoffLocation', e.target.value)
                   }
                   className="mt-1.5"
-                  placeholder="例：宝安机场"
+                  placeholder="e.g. Changi Airport T3"
                 />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="pickup-time">上车时间</Label>
+                <Label htmlFor="pickup-time">Pickup time</Label>
                 <Input
                   id="pickup-time"
                   type="datetime-local"
@@ -355,7 +355,7 @@ export default function SubmitCase() {
                 />
               </div>
               <div>
-                <Label htmlFor="dropoff-time">下车时间</Label>
+                <Label htmlFor="dropoff-time">Drop-off time</Label>
                 <Input
                   id="dropoff-time"
                   type="datetime-local"
@@ -367,7 +367,7 @@ export default function SubmitCase() {
             </div>
             <div className="grid grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="fare">车费 (¥)</Label>
+                <Label htmlFor="fare">Fare (¥)</Label>
                 <Input
                   id="fare"
                   type="number"
@@ -378,7 +378,7 @@ export default function SubmitCase() {
                 />
               </div>
               <div>
-                <Label htmlFor="distance">距离 (km)</Label>
+                <Label htmlFor="distance">Distance (km)</Label>
                 <Input
                   id="distance"
                   type="number"
@@ -392,23 +392,23 @@ export default function SubmitCase() {
                 />
               </div>
               <div>
-                <Label htmlFor="vehicle">车型</Label>
+                <Label htmlFor="vehicle">Vehicle</Label>
                 <Input
                   id="vehicle"
                   value={form.trip.vehicleModel}
                   onChange={(e) => updateTrip('vehicleModel', e.target.value)}
                   className="mt-1.5"
-                  placeholder="丰田凯美瑞"
+                  placeholder="e.g. Toyota Camry"
                 />
               </div>
               <div>
-                <Label htmlFor="plate">车牌号</Label>
+                <Label htmlFor="plate">Plate</Label>
                 <Input
                   id="plate"
                   value={form.trip.plateNumber}
                   onChange={(e) => updateTrip('plateNumber', e.target.value)}
                   className="mt-1.5"
-                  placeholder="粤B·G3F92"
+                  placeholder="e.g. SGP 4521 M"
                 />
               </div>
             </div>
@@ -418,7 +418,7 @@ export default function SubmitCase() {
         {/* Section 5: Evidence */}
         <Card>
           <CardHeader>
-            <CardTitle>证据信息</CardTitle>
+            <CardTitle>Evidence</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <EvidenceList items={form.evidence} onRemove={removeEvidence} />
@@ -433,10 +433,10 @@ export default function SubmitCase() {
             variant="outline"
             onClick={() => navigate('/')}
           >
-            取消
+            Cancel
           </Button>
           <Button type="submit" disabled={createMutation.isPending}>
-            {createMutation.isPending ? '提交中...' : '提交案件'}
+            {createMutation.isPending ? 'Submitting...' : 'Submit case'}
           </Button>
         </div>
       </form>

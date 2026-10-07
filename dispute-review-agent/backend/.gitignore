@@ -24,3 +24,6 @@ coverage/
 
 # Prisma
 prisma/migrations/
+
+# Human decisions kept as precedents (PRECEDENTS_FILE)
+data/

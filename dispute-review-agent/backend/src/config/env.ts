@@ -49,6 +49,10 @@ const envSchema = z.object({
   LLM_TIMEOUT_MS: z.string().transform(Number).default('240000'),
   LLM_IDLE_TIMEOUT_MS: z.string().transform(Number).default('90000'),
 
+  // Human decisions the AI Judge learns from (JSON file), and how many go in its prompt
+  PRECEDENTS_FILE: z.string().default('data/precedents.json'),
+  PRECEDENT_EXAMPLES: z.string().transform(Number).default('3'),
+
   // Company internal API; unset = use the built-in mock
   COMPANY_API_BASE_URL: z.string().optional().transform((v) => v || undefined),
   COMPANY_API_TOKEN: z.string().optional(),

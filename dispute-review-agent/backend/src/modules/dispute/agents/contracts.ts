@@ -52,6 +52,12 @@ export const judgeOutputSchema = z.object({
   confidenceReasoning: z.string().min(1),
   sourceRefs: z.array(z.string().min(1)).min(1),
   missingEvidence: z.array(z.string()),
+  checklist: z.array(z.object({
+    id: z.string().min(1),
+    finding: z.string().min(1),
+    conflict: z.boolean(),
+    sourceRefs: z.array(z.string().min(1)),
+  })).min(1),
 });
 export type JudgeOutput = z.infer<typeof judgeOutputSchema>;
 export type JudgeReview = AIReview & {

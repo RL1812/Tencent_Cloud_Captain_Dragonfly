@@ -48,7 +48,7 @@ uploadsRouter.post(
         return next(
           new AppError(
             tooLarge ? 413 : 400,
-            tooLarge ? `文件过大，上限 ${env.MAX_UPLOAD_MB}MB` : `上传失败：${err.message}`
+            tooLarge ? `File too large; the limit is ${env.MAX_UPLOAD_MB} MB` : `Upload failed: ${err.message}`
           )
         )
       }
@@ -57,7 +57,7 @@ uploadsRouter.post(
   },
   (req: Request, res: Response) => {
     const file = req.file
-    if (!file) throw new AppError(400, '未收到文件（表单字段名应为 "file"）')
+    if (!file) throw new AppError(400, 'No file received (the form field must be named "file")')
     // multer decodes names as latin1; restore UTF-8 (e.g. Chinese filenames)
     const fileName = Buffer.from(file.originalname, 'latin1').toString('utf8')
     res.status(201).json({

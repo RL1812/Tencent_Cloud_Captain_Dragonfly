@@ -51,6 +51,19 @@ export function checkAdvocateSources(output: AdvocateCase, input: AgentInput): v
   )) throw new Error('Policy arguments must cite the supplied cancellation policy');
 }
 
+/**
+ * For datasets, a policy argument must rest on a supplied cancellation_policy field.
+ * One that cites only facts is misfiled, not invented, so it is dropped rather than
+ * failing the whole submission; invented citations still fail in assertSourceRefs.
+ */
+export function groundedPolicyArguments<T extends { sourceRefs: string[] }>(
+  args: T[], input: AgentInput
+): { kept: T[]; dropped: number } {
+  if (!('dispute_ticket' in input)) return { kept: args, dropped: 0 };
+  const kept = args.filter((item) => item.sourceRefs.some((ref) => ref.startsWith('/cancellation_policy/')));
+  return { kept, dropped: args.length - kept.length };
+}
+
 export function formatCaseContext(input: AgentInput): string {
   return JSON.stringify({
     originalRecord: originalRecord(input),

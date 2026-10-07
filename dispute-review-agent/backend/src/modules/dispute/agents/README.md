@@ -53,13 +53,35 @@ No fallback chooses a winner based on ratings or statement length. For stored
 cases: a failed review (mode=fallback) leaves the case pending for a retry; an
 inconclusive ruling or Judge confidence below 60 escalates the case to a human
 (status under_review, escalation.needsHuman); otherwise the case is resolved.
-A human decision (POST /api/disputes/:id/override) closes the case.
+A human decision (POST /api/disputes/:id/override) closes the case at any
+time; a later AI review does not reopen it.
 Earlier reviews, escalations and human decisions are never shown to the agents.
 
 Model output is checked before use: confidenceScore is rounded to an integer
-0-100, and each dataset policy argument must cite at least one
-/cancellation_policy/ field (it may also cite the facts it applies to).
-Rejections are logged with the reason (context "Agents").
+0-100. Each dataset policy argument must cite at least one
+/cancellation_policy/ field (it may also cite the facts it applies to); one
+that cites none is dropped and logged, not fatal. Rejections are logged with
+the reason (context "Agents").
+
+## Judge checklist
+
+checklist.ts lists the points the Judge must answer, by ID, for each dispute
+type plus two common ones (statement-vs-record and timestamp conflicts). The
+Judge returns checklist[{id, finding, conflict, sourceRefs}]. The review is
+rejected (fallback) if an item is missing, a citation does not exist, or a
+conflict is flagged while missingEvidence is empty. Answers are stored with the
+item text and shown in the report.
+
+## Human precedents
+
+A human decision (POST /api/disputes/:id/override with useAsPrecedent, default
+true) is saved by precedents.ts to PRECEDENTS_FILE: case facts, AI and human
+rulings, reason. The orchestrator gives the Judge (not the advocates) up to
+PRECEDENT_EXAMPLES precedents of the same dispute type, newest first, excluding
+the case under review. They calibrate standards only; they are not evidence
+and cannot be cited. The review records precedentsUsed.
+GET /api/disputes/precedents lists them; DELETE /api/disputes/precedents/:caseNumber
+removes one. DELETE /api/disputes/:id/override withdraws a decision and its precedent.
 
 ## Dataset interpretation
 
@@ -77,6 +99,6 @@ GPS, chat or policy service is queried. The dataset has no separate driver state
 The implementation currently uses ordinary async TypeScript orchestration.
 It can be wrapped in LangGraph nodes: input -> parallel advocates -> Judge -> output.
 LangGraph can retain the existing chat client. LangChain is optional for
-model wrappers or future retrieval tools. No framework migration, prioritization
-or learning feedback loop is implemented; human escalation is handled by the
-case store (see above).
+model wrappers or future retrieval tools. No framework migration or model
+fine-tuning is implemented; human escalation is handled by the case store and
+learning from human decisions by precedents in the Judge's prompt (see above).
