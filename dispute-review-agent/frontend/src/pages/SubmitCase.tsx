@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Plus, Trash2, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
 import { getErrorMessage } from '@/lib/api-client';
 import { typeLabels, priorityLabels } from '@/lib/dispute-utils';
@@ -26,6 +27,7 @@ import type {
   CreateDisputeDTO,
   DisputePriority,
   DisputeType,
+  NewEvidence,
   Party,
   TripInfo,
 } from '@/types/dispute';
@@ -33,7 +35,7 @@ import type {
 const initialForm: CreateDisputeDTO = {
   title: '',
   priority: 'medium',
-  type: 'fare_dispute',
+  type: 'route_deviation',
   driver: { name: '', id: '', rating: 5, statement: '' },
   passenger: { name: '', id: '', rating: 5, statement: '' },
   trip: {
@@ -46,7 +48,7 @@ const initialForm: CreateDisputeDTO = {
     vehicleModel: '',
     plateNumber: '',
   },
-  evidence: { description: '', items: [''] },
+  evidence: [],
 };
 
 export default function SubmitCase() {
@@ -93,69 +95,20 @@ export default function SubmitCase() {
     }));
   }
 
-  function updateEvidenceItem(index: number, value: string) {
-    setForm((prev) => {
-      const items = [...prev.evidence.items];
-      items[index] = value;
-      return { ...prev, evidence: { ...prev.evidence, items } };
-    });
+  function addEvidence(evidence: NewEvidence) {
+    setForm((prev) => ({ ...prev, evidence: [...prev.evidence, evidence] }));
   }
 
-  function addEvidenceItem() {
+  function removeEvidence(index: number) {
     setForm((prev) => ({
       ...prev,
-      evidence: {
-        ...prev.evidence,
-        items: [...prev.evidence.items, ''],
-      },
-    }));
-  }
-
-  function removeEvidenceItem(index: number) {
-    setForm((prev) => ({
-      ...prev,
-      evidence: {
-        ...prev.evidence,
-        items: prev.evidence.items.filter((_, i) => i !== index),
-      },
+      evidence: prev.evidence.filter((_, i) => i !== index),
     }));
   }
 
   // --- Validation ---
+  // No input restrictions: any text (or none) is accepted.
   function validate(): boolean {
-    if (!form.title.trim()) {
-      toast.error('请输入案件标题');
-      return false;
-    }
-    if (!form.driver.name.trim() || !form.driver.id.trim()) {
-      toast.error('请填写司机姓名和工号');
-      return false;
-    }
-    if (!form.driver.statement.trim()) {
-      toast.error('请填写司机陈述');
-      return false;
-    }
-    if (!form.passenger.name.trim() || !form.passenger.id.trim()) {
-      toast.error('请填写乘客姓名和账号');
-      return false;
-    }
-    if (!form.passenger.statement.trim()) {
-      toast.error('请填写乘客陈述');
-      return false;
-    }
-    if (!form.trip.pickupLocation.trim() || !form.trip.dropoffLocation.trim()) {
-      toast.error('请填写行程起点和终点');
-      return false;
-    }
-    if (!form.evidence.description.trim()) {
-      toast.error('请填写证据描述');
-      return false;
-    }
-    const validItems = form.evidence.items.filter((i) => i.trim());
-    if (validItems.length === 0) {
-      toast.error('至少添加一项证据');
-      return false;
-    }
     return true;
   }
 
@@ -163,14 +116,7 @@ export default function SubmitCase() {
     e.preventDefault();
     if (!validate()) return;
 
-    const payload: CreateDisputeDTO = {
-      ...form,
-      evidence: {
-        ...form.evidence,
-        items: form.evidence.items.filter((i) => i.trim()),
-      },
-    };
-    createMutation.mutate(payload);
+    createMutation.mutate(form);
   }
 
   return (
@@ -469,54 +415,8 @@ export default function SubmitCase() {
             <CardTitle>证据信息</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="evidence-desc">证据描述</Label>
-              <Input
-                id="evidence-desc"
-                value={form.evidence.description}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    evidence: { ...prev.evidence, description: e.target.value },
-                  }))
-                }
-                className="mt-1.5"
-                placeholder="例：车内录音和行车记录仪已调取"
-              />
-            </div>
-            <div>
-              <Label>证据清单</Label>
-              <div className="space-y-2 mt-1.5">
-                {form.evidence.items.map((item, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Input
-                      value={item}
-                      onChange={(e) => updateEvidenceItem(index, e.target.value)}
-                      placeholder={`证据 ${index + 1}`}
-                    />
-                    {form.evidence.items.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeEvidenceItem(index)}
-                      >
-                        <Trash2 className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addEvidenceItem}
-                >
-                  <Plus className="w-3.5 h-3.5 mr-1" />
-                  添加证据项
-                </Button>
-              </div>
-            </div>
+            <EvidenceList items={form.evidence} onRemove={removeEvidence} />
+            <EvidenceForm onAdd={addEvidence} />
           </CardContent>
         </Card>
 

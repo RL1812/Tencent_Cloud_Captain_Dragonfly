@@ -27,6 +27,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
 import {
   typeLabels,
@@ -41,7 +42,7 @@ import {
   formatDateTime,
 } from '@/lib/dispute-utils';
 import { cn } from '@/lib/utils';
-import type { DisputeCase, AIReview, Party } from '@/types/dispute';
+import type { DisputeCase, AIReview, NewEvidence, Party } from '@/types/dispute';
 
 // --- Party Card ---
 function PartyCard({ title, party, icon: Icon }: { title: string; party: Party; icon: React.ElementType }) {
@@ -285,6 +286,18 @@ export default function CaseDetail() {
     },
   });
 
+  const evidenceMutation = useMutation({
+    mutationFn: (evidence: NewEvidence) => disputeApi.addEvidence(id!, evidence),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dispute', id] });
+      toast.success('证据已添加');
+    },
+    onError: (error) => {
+      const msg = error instanceof Error ? error.message : '添加证据失败';
+      toast.error(msg);
+    },
+  });
+
   if (isLoading || !caseData) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -354,16 +367,12 @@ export default function CaseDetail() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">证据信息</CardTitle>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground mb-3">{c.evidence.description}</p>
-          <div className="space-y-1.5">
-            {c.evidence.items.map((item, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <FileText className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                {item}
-              </div>
-            ))}
-          </div>
+        <CardContent className="space-y-4">
+          <EvidenceList items={c.evidence} />
+          <EvidenceForm
+            onAdd={(evidence) => evidenceMutation.mutate(evidence)}
+            pending={evidenceMutation.isPending}
+          />
         </CardContent>
       </Card>
 

@@ -15,43 +15,43 @@ export const disputeRouter: Router = Router();
 // Zod validation schema for case creation
 // ============================================
 const partySchema = z.object({
-  name: z.string().min(1, '姓名不能为空'),
-  id: z.string().min(1, 'ID不能为空'),
-  rating: z.number().min(0).max(5),
-  statement: z.string().min(10, '陈述至少需要10个字符'),
+  name: z.string(),
+  id: z.string(),
+  rating: z.number(),
+  statement: z.string(),
 });
 
 const tripSchema = z.object({
-  pickupLocation: z.string().min(1),
-  dropoffLocation: z.string().min(1),
-  pickupTime: z.string().min(1),
-  dropoffTime: z.string().min(1),
-  fare: z.number().min(0),
-  distance: z.number().min(0),
-  vehicleModel: z.string().min(1),
-  plateNumber: z.string().min(1),
+  pickupLocation: z.string(),
+  dropoffLocation: z.string(),
+  pickupTime: z.string(),
+  dropoffTime: z.string(),
+  fare: z.number(),
+  distance: z.number(),
+  vehicleModel: z.string(),
+  plateNumber: z.string(),
 });
 
-const evidenceSchema = z.object({
-  description: z.string().min(1),
-  items: z.array(z.string()).min(1, '至少需要一项证据'),
+const evidenceInputSchema = z.object({
+  party: z.enum(['driver', 'rider']),
+  kind: z.enum(['text', 'chat', 'gps', 'payment', 'photo']),
+  title: z.string(),
+  content: z.string(),
 });
 
 const createDisputeSchema = z.object({
-  title: z.string().min(5, '标题至少需要5个字符'),
+  title: z.string(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   type: z.enum([
-    'fare_dispute',
-    'route_dispute',
-    'behavior_complaint',
-    'safety_issue',
-    'cancellation_dispute',
-    'other',
+    'route_deviation',
+    'no_show_charge',
+    'property_damage',
+    'safety_accident',
   ]),
   driver: partySchema,
   passenger: partySchema,
   trip: tripSchema,
-  evidence: evidenceSchema,
+  evidence: z.array(evidenceInputSchema),
 });
 
 // ============================================
@@ -91,6 +91,19 @@ disputeRouter.post('/', async (req: Request, res: Response) => {
   const parsed = createDisputeSchema.parse(req.body);
   const newCase = disputeStore.create(parsed as CreateDisputeDTO);
   res.status(201).json({ data: newCase });
+});
+
+/**
+ * POST /api/disputes/:id/evidence — Driver or rider adds evidence to a case
+ */
+disputeRouter.post('/:id/evidence', async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const parsed = evidenceInputSchema.parse(req.body);
+  const updated = disputeStore.addEvidence(id, parsed);
+  if (!updated) {
+    throw new AppError(404, '案件不存在');
+  }
+  res.status(201).json({ data: updated });
 });
 
 /**
