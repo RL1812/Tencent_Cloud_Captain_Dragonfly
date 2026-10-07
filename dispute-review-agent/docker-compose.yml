@@ -1,0 +1,35 @@
+# Open-source services for the knowledge base. Start with:
+#   docker compose up -d
+#   docker compose exec ollama ollama pull bge-m3
+#   docker compose exec ollama ollama pull qwen2.5:7b
+# then run the backend as usual (npm run dev); its .env defaults point here.
+
+services:
+  postgres:
+    # PostgreSQL 17 + pgvector 0.8 (PostgreSQL License)
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: dispute
+      POSTGRES_PASSWORD: dispute
+      POSTGRES_DB: dispute_review
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U dispute -d dispute_review']
+      interval: 5s
+      retries: 10
+
+  ollama:
+    # Local model server (MIT). On macOS, the native Ollama app is much faster
+    # (it uses the GPU); if you use it, skip this service.
+    image: ollama/ollama:latest
+    ports:
+      - '11434:11434'
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  pgdata:
+  ollama:

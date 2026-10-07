@@ -5,12 +5,10 @@
 export type DisputeStatus = 'pending' | 'under_review' | 'resolved';
 export type DisputePriority = 'low' | 'medium' | 'high' | 'urgent';
 export type DisputeType =
-  | 'fare_dispute'
-  | 'route_dispute'
-  | 'behavior_complaint'
-  | 'safety_issue'
-  | 'cancellation_dispute'
-  | 'other';
+  | 'route_deviation'
+  | 'no_show_charge'
+  | 'property_damage'
+  | 'safety_accident';
 export type Recommendation = 'driver' | 'passenger' | 'shared' | 'inconclusive';
 
 export interface Party {
@@ -31,10 +29,25 @@ export interface TripInfo {
   plateNumber: string;
 }
 
-export interface Evidence {
-  description: string;
-  items: string[];
+export type EvidenceParty = 'driver' | 'rider';
+export type EvidenceKind = 'text' | 'chat' | 'gps' | 'payment' | 'photo';
+
+/** A single piece of evidence, uploaded by one party. */
+export interface EvidenceItem {
+  id: string;
+  party: EvidenceParty;
+  kind: EvidenceKind;
+  title: string;
+  /** Text content (chat log, GPS points as JSON/CSV text, payment details, description). */
+  content: string;
+  /** Reserved for uploaded files (photos / PDFs); parsed by the parsing module. */
+  fileName?: string;
+  fileUrl?: string;
+  uploadedAt: string;
 }
+
+/** Evidence as submitted by a client (server adds id and uploadedAt). */
+export type NewEvidence = Pick<EvidenceItem, 'party' | 'kind' | 'title' | 'content'>;
 
 export interface AIReview {
   summary: string;
@@ -63,7 +76,7 @@ export interface DisputeCase {
   driver: Party;
   passenger: Party;
   trip: TripInfo;
-  evidence: Evidence;
+  evidence: EvidenceItem[];
   review?: AIReview;
 }
 
@@ -74,7 +87,7 @@ export interface CreateDisputeDTO {
   driver: Party;
   passenger: Party;
   trip: TripInfo;
-  evidence: Evidence;
+  evidence: NewEvidence[];
 }
 
 export interface DashboardStats {

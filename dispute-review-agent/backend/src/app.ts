@@ -9,6 +9,7 @@ import { errorHandler } from './middleware/errorHandler'
 import { httpLogger } from './middleware/logger'
 import { systemRouter } from './modules/system'
 import { disputeRouter } from './modules/dispute/routes'
+import { knowledgeRouter } from './modules/knowledge/routes'
 
 export const createApp = (): Application => {
   const app = express()
@@ -24,7 +25,7 @@ export const createApp = (): Application => {
   )
 
   // Body parsing and compression
-  app.use(express.json())
+  app.use(express.json({ limit: '50mb' }))
   app.use(express.urlencoded({ extended: true }))
   app.use(compression())
 
@@ -33,6 +34,9 @@ export const createApp = (): Application => {
 
   // Dispute Review Agent routes
   app.use(`${env.API_PREFIX}/disputes`, disputeRouter)
+
+  // Knowledge base: uploads, company records, vector search, RAG Q&A
+  app.use(`${env.API_PREFIX}/knowledge`, knowledgeRouter)
 
   // Serve built frontend (production)
   const staticDir = path.join(process.cwd(), 'public')
