@@ -25,19 +25,22 @@ disputeRouter.post('/dataset-review', async (req: Request, res: Response) => {
 /**
  * POST /api/disputes/import-dataset — Turn a sample dataset (DISP-002 JSON block)
  * into a dashboard case. The original dataset is kept and used for the review.
+ * A dataset already imported returns its existing case (200, existing: true).
  */
 disputeRouter.post('/import-dataset', async (req: Request, res: Response) => {
   const dataset = sampleDatasetSchema.parse(req.body);
   const caseNumber = dataset.dispute_ticket.dispute_id;
-  if (disputeStore.getAll().some((c) => c.caseNumber === caseNumber)) {
-    throw new AppError(409, `案件 ${caseNumber} 已导入`);
+  const existing = disputeStore.getAll().find((c) => c.caseNumber === caseNumber);
+  if (existing) {
+    res.json({ data: existing, existing: true });
+    return;
   }
   const created = disputeStore.create(datasetToCreateDTO(dataset), {
     caseNumber,
     dataset,
     createdAt: dataset.dispute_ticket.filed_at,
   });
-  res.status(201).json({ data: created });
+  res.status(201).json({ data: created, existing: false });
 });
 
 // ============================================

@@ -55,18 +55,20 @@ export const disputeApi = {
       .then((r) => r.data.data);
   },
 
+  /** existing = the dataset was imported before; its case is returned instead */
   importDataset: (dataset: unknown) =>
     apiClient
-      .post<{ data: DisputeCase }>('/disputes/import-dataset', dataset)
-      .then((r) => r.data.data),
+      .post<{ data: DisputeCase; existing: boolean }>('/disputes/import-dataset', dataset)
+      .then((r) => ({ case: r.data.data, existing: r.data.existing })),
 
   override: (id: string, recommendation: Recommendation, reason: string) =>
     apiClient
       .post<{ data: DisputeCase }>(`/disputes/${id}/override`, { recommendation, reason })
       .then((r) => r.data.data),
 
+  // Two advocates and a Judge, each possibly retried on another model: allow several minutes
   review: (id: string) =>
     apiClient
-      .post<{ data: DisputeCase }>(`/disputes/${id}/review`, {}, { timeout: 120000 })
+      .post<{ data: DisputeCase }>(`/disputes/${id}/review`, {}, { timeout: 600000 })
       .then((r) => r.data.data),
 };

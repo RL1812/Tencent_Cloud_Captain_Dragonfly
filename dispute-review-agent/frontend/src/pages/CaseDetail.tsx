@@ -37,6 +37,7 @@ import {
 } from '@/components/AgentReview';
 import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
+import { getErrorMessage } from '@/lib/api-client';
 import {
   typeLabels,
   priorityLabels,
@@ -279,48 +280,63 @@ export default function CaseDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  const { data: caseData, isLoading } = useQuery({
+  const { data: caseData, isLoading, isError, error } = useQuery({
     queryKey: ['dispute', id],
     queryFn: () => disputeApi.getById(id!),
     enabled: !!id,
   });
 
+  // The case's status shows on the dashboard too, so refresh both
+  function refreshCase() {
+    queryClient.invalidateQueries({ queryKey: ['dispute', id] });
+    queryClient.invalidateQueries({ queryKey: ['disputes'] });
+    queryClient.invalidateQueries({ queryKey: ['dispute-stats'] });
+  }
+
   const reviewMutation = useMutation({
     mutationFn: () => disputeApi.review(id!),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dispute', id] });
-      toast.success('AI审查完成');
+    onSuccess: (updated) => {
+      refreshCase();
+      if (updated.review?.mode === 'fallback') toast.warning('AI审查未能完成，可稍后重新审查');
+      else toast.success('AI审查完成');
     },
     onError: (error) => {
-      const msg = error instanceof Error ? error.message : 'AI审查失败，请稍后重试';
-      toast.error(msg);
+      // The status was set to "under review" while the agents ran
+      refreshCase();
+      toast.error(getErrorMessage(error));
     },
   });
 
   const evidenceMutation = useMutation({
     mutationFn: (evidence: NewEvidence) => disputeApi.addEvidence(id!, evidence),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dispute', id] });
+      refreshCase();
       toast.success('证据已添加');
     },
-    onError: (error) => {
-      const msg = error instanceof Error ? error.message : '添加证据失败';
-      toast.error(msg);
-    },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const overrideMutation = useMutation({
     mutationFn: ({ rec, reason }: { rec: Recommendation; reason: string }) =>
       disputeApi.override(id!, rec, reason),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dispute', id] });
-      queryClient.invalidateQueries({ queryKey: ['disputes'] });
+      refreshCase();
       toast.success('人工裁决已记录');
     },
-    onError: (error) => {
-      toast.error(error instanceof Error ? error.message : '提交失败');
-    },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
+
+  if (isError) {
+    return (
+      <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+        <p className="text-sm text-muted-foreground mb-4">{getErrorMessage(error)}</p>
+        <Button variant="outline" size="sm" onClick={() => navigate('/')}>
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
+          返回案件列表
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading || !caseData) {
     return (
@@ -406,8 +422,8 @@ export default function CaseDetail() {
         </p>
       )}
 
-      {/* Multi-agent process */}
-      {c.review?.advocateSubmissions && !reviewMutation.isPending && (
+      {/* Multi-agent process (re-review also works for reviews from the old single-agent flow) */}
+      {c.review && !reviewMutation.isPending && (
         <>
           <div className="flex justify-end mb-2">
             <Button
@@ -442,7 +458,7 @@ export default function CaseDetail() {
               <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
               <p className="font-medium">AI Agent 正在审查纠纷</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-md text-center">
-                正在分析双方陈述、交叉验证证据、匹配平台规则...通常需要10-30秒
+                骑手代理与司机代理正在并行陈词，随后由法官裁决……通常需要 1-3 分钟
               </p>
             </div>
           </CardContent>

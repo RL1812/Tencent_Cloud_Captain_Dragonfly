@@ -32,6 +32,23 @@ const envSchema = z.object({
   MAX_UPLOAD_MB: z.string().transform(Number).default('25'),
   OCR_LANGS: z.string().default('eng+chi_sim'),
 
+  // Dispute-review agents (Rider/Driver Advocate, Judge). Gemini is used when its key is set.
+  GEMINI_API_KEY: z.string().optional().transform((v) => v?.trim() || undefined),
+  GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
+  // Tried in order when GEMINI_MODEL fails (high demand, quota, retired model)
+  GEMINI_FALLBACK_MODELS: z
+    .string()
+    .default('gemini-3.1-flash-lite,gemini-3.5-flash')
+    .transform((v) => v.split(',').map((m) => m.trim()).filter(Boolean)),
+  // Gemini thinks before answering; "low" keeps free-tier calls within a few minutes
+  GEMINI_REASONING_EFFORT: z.enum(['low', 'medium', 'high']).default('low'),
+  TOKENHUB_API_KEY: z.string().optional().transform((v) => v || undefined),
+  TOKENHUB_BASE_URL: z.string().url().default('https://tokenhub.tencentmaas.com/v1'),
+  TOKENHUB_MODEL: z.string().default('hy3'),
+  // A call is abandoned after LLM_TIMEOUT_MS in total, or LLM_IDLE_TIMEOUT_MS without output
+  LLM_TIMEOUT_MS: z.string().transform(Number).default('240000'),
+  LLM_IDLE_TIMEOUT_MS: z.string().transform(Number).default('90000'),
+
   // Company internal API; unset = use the built-in mock
   COMPANY_API_BASE_URL: z.string().optional().transform((v) => v || undefined),
   COMPANY_API_TOKEN: z.string().optional(),

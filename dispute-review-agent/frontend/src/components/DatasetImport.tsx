@@ -25,11 +25,12 @@ export function DatasetImport() {
 
   const importMutation = useMutation({
     mutationFn: disputeApi.importDataset,
-    onSuccess: (data) => {
+    onSuccess: ({ case: c, existing }) => {
       queryClient.invalidateQueries({ queryKey: ['disputes'] });
       queryClient.invalidateQueries({ queryKey: ['dispute-stats'] });
-      toast.success(`已导入 ${data.caseNumber}`);
-      navigate(`/cases/${data.id}`);
+      if (existing) toast.info(`${c.caseNumber} 已导入过，已打开现有案件`);
+      else toast.success(`已导入 ${c.caseNumber}`);
+      navigate(`/cases/${c.id}`);
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });

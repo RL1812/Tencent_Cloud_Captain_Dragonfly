@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,11 +54,14 @@ const initialForm: CreateDisputeDTO = {
 
 export default function SubmitCase() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<CreateDisputeDTO>(initialForm);
 
   const createMutation = useMutation({
     mutationFn: disputeApi.create,
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['disputes'] });
+      queryClient.invalidateQueries({ queryKey: ['dispute-stats'] });
       toast.success('案件创建成功');
       navigate(`/cases/${data.id}`);
     },

@@ -31,7 +31,7 @@
 - `POST /api/disputes/:id/evidence`:司机或乘客补充证据,body 为 `{ party, kind, title, content }`
 - `GET /api/disputes/:id`:返回案件,含 `evidence` 数组
 - `POST /api/uploads`:上传文件(multipart 字段 `file`),返回 `{ fileName, fileUrl, mimeType }`,再放进证据的同名字段
-- `POST /api/disputes/import-dataset`:导入样例数据集(DISP-002 的 JSON),生成案件并保留原始数据集
+- `POST /api/disputes/import-dataset`:导入样例数据集(DISP-002 的 JSON),生成案件并保留原始数据集；同一数据集再次导入时返回已有案件(`existing: true`)
 - `POST /api/disputes/:id/review`:触发三个 agent 审查。返回的案件含 `review`(法官裁决)和 `review.advocateSubmissions`(骑手/司机代理陈词)
 - `POST /api/disputes/:id/override`:人工裁决,body 为 `{ recommendation, reason }`
 

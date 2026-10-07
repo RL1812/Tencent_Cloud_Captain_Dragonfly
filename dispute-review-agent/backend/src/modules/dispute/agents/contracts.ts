@@ -6,6 +6,13 @@ export type AgentInput = DisputeCase | SampleDataset;
 export type AdvocateRole = 'rider_advocate' | 'driver_advocate';
 export type ExecutionMode = 'llm' | 'fallback';
 
+// Models sometimes answer 72.5 or a probability like 0.85; store a whole 0-100 score
+const confidenceScoreSchema = z
+  .number()
+  .min(0)
+  .max(100)
+  .transform((n) => Math.round(n > 0 && n < 1 ? n * 100 : n));
+
 export const evidenceArgumentSchema = z.object({
   evidence: z.string().min(1),
   relevance: z.string().min(1),
@@ -22,7 +29,7 @@ export const advocateOutputSchema = z.object({
   })),
   missingEvidence: z.array(z.string()),
   requestedOutcome: z.string().min(1),
-  confidenceScore: z.number().int().min(0).max(100),
+  confidenceScore: confidenceScoreSchema,
 });
 export type EvidenceArgument = z.infer<typeof evidenceArgumentSchema>;
 export type AdvocateCase = z.infer<typeof advocateOutputSchema> & {
@@ -41,7 +48,7 @@ export const judgeOutputSchema = z.object({
   recommendation: z.enum(['driver', 'passenger', 'shared', 'inconclusive']),
   recommendationReasoning: z.string().min(1),
   suggestedActions: z.array(z.string()).min(1),
-  confidenceScore: z.number().int().min(0).max(100),
+  confidenceScore: confidenceScoreSchema,
   confidenceReasoning: z.string().min(1),
   sourceRefs: z.array(z.string().min(1)).min(1),
   missingEvidence: z.array(z.string()),

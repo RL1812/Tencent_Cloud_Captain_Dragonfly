@@ -1,4 +1,6 @@
 import { Router, Request, Response } from 'express'
+import { isDatabaseReady } from '../config/database'
+import { llmInfo } from '../lib/llm-chat'
 
 export const systemRouter: Router = Router()
 
@@ -36,7 +38,10 @@ systemRouter.get('/health/ready', async (_req: Request, res: Response) => {
     status: 'ready',
     timestamp: new Date().toISOString(),
     checks: {
-      database: 'TCB managed (frontend SDK)',
+      // Knowledge base only; dispute cases are kept in memory
+      database: isDatabaseReady() ? 'ok' : 'unavailable',
+      // Model provider for the dispute-review agents; null = agents fall back
+      llm: llmInfo(),
     },
   })
 })

@@ -149,8 +149,9 @@ source, free, and runs locally — no API keys.
 | PDF text | unpdf | MIT |
 | Screenshot/photo OCR | tesseract.js (`eng+chi_sim`) | Apache-2.0 |
 
-> The existing `/api/disputes/:id/review` still uses Tencent TokenHub (`src/lib/hunyuan-chat.ts`).
-> Only the knowledge base uses the local models.
+> The AI case review (`/api/disputes/:id/review`) does not use these local models. Its three agents
+> call Google Gemini (free tier, `GEMINI_API_KEY`) through `src/lib/llm-chat.ts`, with Tencent
+> TokenHub as the alternative. Only the knowledge base uses the local models.
 
 ### Setup
 

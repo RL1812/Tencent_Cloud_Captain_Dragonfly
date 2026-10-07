@@ -173,7 +173,7 @@ export function AgentTranscript({ review }: { review: AIReview }) {
     <div className="mb-6">
       <h2 className="text-xl font-bold mb-1">多智能体审查过程</h2>
       <p className="text-sm text-muted-foreground mb-4">
-        第一步：骑手代理与司机代理各自取证并陈词（并行）　→　第二步：法官综合双方陈词作出裁决
+        第一步：骑手代理与司机代理各自取证并陈词（并行） → 第二步：法官综合双方陈词作出裁决
       </p>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AdvocateCard title="骑手代理（Rider Advocate）" tone="rider" a={sub.rider} />
