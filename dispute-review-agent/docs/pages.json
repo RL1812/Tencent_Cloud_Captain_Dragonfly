@@ -1,0 +1,17 @@
+[
+  {
+    "pageKey": "Dashboard",
+    "title": "仪表盘",
+    "url": "/"
+  },
+  {
+    "pageKey": "CaseDetail",
+    "title": "案件详情",
+    "url": "/cases/:id"
+  },
+  {
+    "pageKey": "Submit",
+    "title": "提交案件",
+    "url": "/submit"
+  }
+]
