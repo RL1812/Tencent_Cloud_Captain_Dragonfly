@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DatasetImport } from '@/components/DatasetImport';
 import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
 import { getErrorMessage } from '@/lib/api-client';
@@ -130,6 +131,8 @@ export default function SubmitCase() {
         <span className="text-foreground">提交案件</span>
       </div>
       <h1 className="text-2xl font-bold mb-6">提交新纠纷案件</h1>
+
+      <DatasetImport />
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Section 1: Case Info */}

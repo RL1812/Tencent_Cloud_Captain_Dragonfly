@@ -62,7 +62,7 @@ function formatEvidence(items: EvidenceItem[]): string {
     const list = items.filter((e) => e.party === party);
     if (list.length === 0) return `#### ${title}\n- （未提交证据）`;
     return `#### ${title}\n${list
-      .map((e) => `- [${KIND_LABELS[e.kind]}] ${e.title}：${e.content}`)
+      .map((e) => `- [${KIND_LABELS[e.kind]}] ${e.title}：${e.content}${e.fileName ? `（附件：${e.fileName}，AI暂无法查看附件内容）` : ''}`)
       .join('\n')}`;
   };
   return `${section('司机方证据', 'driver')}\n\n${section('乘客方证据', 'rider')}`;

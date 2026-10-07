@@ -21,6 +21,7 @@ export const typeLabels: Record<DisputeType, string> = {
 export const evidencePartyLabels: Record<EvidenceParty, string> = {
   driver: '司机',
   rider: '乘客',
+  platform: '平台记录',
 };
 
 export const evidenceKindLabels: Record<EvidenceKind, string> = {
@@ -109,6 +110,11 @@ export function confidenceBarColor(score: number): string {
   if (score >= 70) return 'bg-green-500';
   if (score >= 40) return 'bg-amber-500';
   return 'bg-red-500';
+}
+
+/** Fare with its currency symbol (S$ for SGD, ¥ otherwise). */
+export function formatFare(fare: number, currency?: 'CNY' | 'SGD'): string {
+  return `${currency === 'SGD' ? 'S$' : '¥'}${fare}`;
 }
 
 export function formatDateTime(iso: string): string {

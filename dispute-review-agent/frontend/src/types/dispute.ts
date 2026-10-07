@@ -27,9 +27,12 @@ export interface TripInfo {
   distance: number;
   vehicleModel: string;
   plateNumber: string;
+  /** Fare currency; defaults to CNY when absent */
+  currency?: 'CNY' | 'SGD';
 }
 
-export type EvidenceParty = 'driver' | 'rider';
+/** platform = system records (GPS, app events, policy), not uploaded by a party */
+export type EvidenceParty = 'driver' | 'rider' | 'platform';
 export type EvidenceKind = 'text' | 'chat' | 'gps' | 'payment' | 'photo';
 
 /** A single piece of evidence, uploaded by one party. */
@@ -43,11 +46,28 @@ export interface EvidenceItem {
   /** Reserved for uploaded files (photos / PDFs); parsed by the parsing module. */
   fileName?: string;
   fileUrl?: string;
+  mimeType?: string;
   uploadedAt: string;
 }
 
 /** Evidence as submitted by a client (server adds id and uploadedAt). */
-export type NewEvidence = Pick<EvidenceItem, 'party' | 'kind' | 'title' | 'content'>;
+export type NewEvidence = Pick<EvidenceItem, 'party' | 'kind' | 'title' | 'content'> &
+  Partial<Pick<EvidenceItem, 'fileName' | 'fileUrl' | 'mimeType'>>;
+
+/** One advocate's case, produced by the Rider / Driver Advocate agent. */
+export interface AdvocateSubmission {
+  agent: 'rider_advocate' | 'driver_advocate';
+  disputeId: string;
+  mode: 'llm' | 'fallback';
+  positionSummary: string;
+  claims: string[];
+  supportingEvidence: { evidence: string; relevance: string; sourceRefs: string[] }[];
+  adverseEvidence: { evidence: string; relevance: string; sourceRefs: string[] }[];
+  policyArguments: { argument: string; sourceRefs: string[] }[];
+  missingEvidence: string[];
+  requestedOutcome: string;
+  confidenceScore: number;
+}
 
 export interface AIReview {
   summary: string;
@@ -62,6 +82,25 @@ export interface AIReview {
   confidenceScore: number;
   confidenceReasoning: string;
   reviewedAt: string;
+  /** Multi-agent fields (absent on reviews from the old single-agent flow) */
+  disputeId?: string;
+  mode?: 'llm' | 'fallback';
+  sourceRefs?: string[];
+  missingEvidence?: string[];
+  advocateSubmissions?: { rider: AdvocateSubmission; driver: AdvocateSubmission };
+}
+
+/** Set when the Judge is not confident enough and a human should decide. */
+export interface Escalation {
+  needsHuman: boolean;
+  reason: string;
+}
+
+/** A human reviewer's decision, overriding the Judge. */
+export interface HumanOverride {
+  recommendation: Recommendation;
+  reason: string;
+  decidedAt: string;
 }
 
 export interface DisputeCase {
@@ -78,6 +117,10 @@ export interface DisputeCase {
   trip: TripInfo;
   evidence: EvidenceItem[];
   review?: AIReview;
+  escalation?: Escalation;
+  humanOverride?: HumanOverride;
+  /** Present when the case was imported from a sample dataset */
+  dataset?: unknown;
 }
 
 export interface CreateDisputeDTO {
