@@ -6,10 +6,19 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { AppError } from '../../middleware/errorHandler';
 import { disputeStore } from './store';
-import { reviewDispute } from './agent';
+import { reviewDispute } from './agents/orchestrator';
+import { sampleDatasetSchema } from './agents/dataset';
 import type { CreateDisputeDTO } from './types';
 
 export const disputeRouter: Router = Router();
+
+// Accept the JSON block from the sample markdown directly. This endpoint returns
+// the original dispute ID, both submissions and the ruling; it does not persist a case.
+disputeRouter.post('/dataset-review', async (req: Request, res: Response) => {
+  const dataset = sampleDatasetSchema.parse(req.body);
+  const review = await reviewDispute(dataset);
+  res.json({ data: review });
+});
 
 // ============================================
 // Zod validation schema for case creation
@@ -109,6 +118,10 @@ disputeRouter.post('/:id/review', async (req: Request, res: Response) => {
   try {
     const review = await reviewDispute(dispute);
     const updated = disputeStore.updateReview(id, review);
+    // A failed or inconclusive review must remain open for a later retry.
+    if (review.mode === 'fallback' || review.recommendation === 'inconclusive') {
+      disputeStore.setStatus(id, 'pending');
+    }
     res.json({ data: updated });
   } catch (error) {
     // Revert status on failure
