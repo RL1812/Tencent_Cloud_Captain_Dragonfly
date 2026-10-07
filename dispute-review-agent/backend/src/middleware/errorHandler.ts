@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express'
 import { ZodError } from 'zod'
+import { MulterError } from 'multer'
 import { createLogger } from '../config/logger'
 
 const logger = createLogger('ErrorHandler')
@@ -34,6 +35,15 @@ export const errorHandler = (err: Error, req: Request, res: Response, _next: Nex
         field: e.path.join('.'),
         message: e.message,
       })),
+    })
+  }
+
+  // Upload errors (file too large, too many files, wrong field name)
+  if (err instanceof MulterError) {
+    logger.warn({ method: req.method, url: req.url, code: err.code }, err.message)
+    return res.status(err.code === 'LIMIT_FILE_SIZE' ? 413 : 400).json({
+      status: 'error',
+      message: err.message,
     })
   }
 

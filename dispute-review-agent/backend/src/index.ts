@@ -1,9 +1,20 @@
 import { createApp } from './app'
 import { env } from './config/env'
 import { logger } from './config/logger'
+import { closeDatabase, initDatabase } from './config/database'
+import { terminateOcr } from './modules/knowledge/parsers'
 
 const startServer = async () => {
   try {
+    // The dispute review features work without the knowledge base, so a
+    // missing database is a warning, not a reason to stop the server
+    await initDatabase().catch((err) => {
+      logger.warn(
+        { err: err instanceof Error ? err.message : err },
+        'Knowledge base database unavailable; /api/knowledge routes will return 503'
+      )
+    })
+
     const app = createApp()
 
     app.listen(env.PORT, () => {
@@ -18,13 +29,12 @@ const startServer = async () => {
   }
 }
 
-// Handle graceful shutdown silently
-process.on('SIGTERM', async () => {
+const shutdown = async () => {
+  await Promise.allSettled([terminateOcr(), closeDatabase()])
   process.exit(0)
-})
+}
 
-process.on('SIGINT', async () => {
-  process.exit(0)
-})
+process.on('SIGTERM', shutdown)
+process.on('SIGINT', shutdown)
 
 startServer()

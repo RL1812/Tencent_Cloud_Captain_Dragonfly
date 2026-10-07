@@ -6,6 +6,7 @@ node_modules/
 dist/
 build/
 backend/public/
+backend/uploads/
 frontend/dist/
 
 # Environment variables
