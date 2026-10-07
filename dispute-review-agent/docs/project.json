@@ -1,0 +1,8 @@
+{
+  "project_type": "web",
+  "sub_project_type": "",
+  "name": "司乘纠纷审查Agent",
+  "app_slug": "dispute-review-agent",
+  "version_description": "修复线上部署端口冲突问题",
+  "preview_type": "pc"
+}

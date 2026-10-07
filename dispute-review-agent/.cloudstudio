@@ -1,0 +1,11 @@
+[[app]]
+name = "frontend"
+cmd = 'cd "/workspace/frontend" && pnpm dev'
+port = 5173
+autoRun = true
+
+[[app]]
+name = "backend"
+cmd = 'cd "/workspace/backend" && pnpm dev'
+port = 3000
+autoRun = true
