@@ -1,0 +1,221 @@
+{
+  "synthetic": true,
+  "notes": "Offline evaluation rubric only; never send this answer key to the agents. Recommendations are fixture-author expectations, not actual LLM outputs or official Ryde policy. Null refund means undetermined. All monetary values are SGD.",
+  "cases": [
+    {
+      "dispute_id": "DISP-003",
+      "file": "DISP-003.json",
+      "scenario": "Valid charge despite lower driver rating",
+      "expected_outcome": "uphold",
+      "expected_recommendation": "driver",
+      "currency": "SGD",
+      "expected_refund_amount": 0,
+      "reason": "Arrival, timer and stationary pickup records establish the full eight-minute wait. Prior ratings do not disprove the trip records.",
+      "evidence_refs": [
+        "/gps_telemetry",
+        "/trip_data",
+        "/driver_profile/avg_rating",
+        "/cancellation_policy"
+      ],
+      "acceptance_criteria": [
+        "Uphold SGD 5 as driver compensation.",
+        "Do not treat low driver rating or a historical flag as proof of current fault."
+      ],
+      "assumptions": []
+    },
+    {
+      "dispute_id": "DISP-004",
+      "file": "DISP-004.json",
+      "scenario": "Cancelled within free-wait period",
+      "expected_outcome": "reverse",
+      "expected_recommendation": "passenger",
+      "currency": "SGD",
+      "expected_refund_amount": 5,
+      "reason": "Only four minutes elapsed; neither the free-wait period nor the no-show threshold was met.",
+      "evidence_refs": [
+        "/trip_data/driver_wait_start",
+        "/trip_data/cancellation_time",
+        "/cancellation_policy"
+      ],
+      "acceptance_criteria": [
+        "Reverse the SGD 5 charge.",
+        "Distinguish four elapsed minutes from both policy thresholds."
+      ],
+      "assumptions": []
+    },
+    {
+      "dispute_id": "DISP-005",
+      "file": "DISP-005.json",
+      "scenario": "Driver waits at the wrong location",
+      "expected_outcome": "reverse",
+      "expected_recommendation": "passenger",
+      "currency": "SGD",
+      "expected_refund_amount": 5,
+      "reason": "All supplied driver locations are at the drop-off, not the booked pickup. Waiting there does not establish a pickup no-show.",
+      "evidence_refs": [
+        "/gps_telemetry",
+        "/trip_data/pickup_location",
+        "/trip_data/dropoff_location",
+        "/chat_logs/0"
+      ],
+      "acceptance_criteria": [
+        "Reverse SGD 5.",
+        "Compare coordinates, not just the driver's Arrived status."
+      ],
+      "assumptions": [
+        "No-show waiting must take place at the booked pickup; the sample policy does not explicitly define a geofence radius."
+      ]
+    },
+    {
+      "dispute_id": "DISP-006",
+      "file": "DISP-006.json",
+      "scenario": "Early arrival with undefined wait-start policy",
+      "expected_outcome": "inconclusive",
+      "expected_recommendation": "inconclusive",
+      "currency": "SGD",
+      "expected_refund_amount": null,
+      "reason": "The wait is eight minutes from arrival but six from scheduled pickup. Supplied policy does not define whether early arrival counts.",
+      "evidence_refs": [
+        "/trip_data/scheduled_time",
+        "/trip_data/driver_arrival_time",
+        "/trip_data/cancellation_time",
+        "/cancellation_policy"
+      ],
+      "acceptance_criteria": [
+        "Identify the eight-versus-six-minute ambiguity.",
+        "Request an authoritative wait-start rule; do not guess a refund amount."
+      ],
+      "assumptions": []
+    },
+    {
+      "dispute_id": "DISP-007",
+      "file": "DISP-007.json",
+      "scenario": "Fee exceeds policy amount",
+      "expected_outcome": "partial_refund",
+      "expected_recommendation": "passenger",
+      "currency": "SGD",
+      "expected_refund_amount": 5,
+      "reason": "The no-show conditions are met, but the actual fee exceeds the policy fee by SGD 5.",
+      "evidence_refs": [
+        "/trip_data/cancellation_fee",
+        "/cancellation_policy/cancellation_fee_after_wait",
+        "/app_events"
+      ],
+      "acceptance_criteria": [
+        "Refund SGD 5 and retain SGD 5 for driver compensation.",
+        "Do not refund the full SGD 10 or uphold the excess."
+      ],
+      "assumptions": []
+    },
+    {
+      "dispute_id": "DISP-008",
+      "file": "DISP-008.json",
+      "scenario": "Missing evidence of arrival and waiting",
+      "expected_outcome": "inconclusive",
+      "expected_recommendation": "inconclusive",
+      "currency": "SGD",
+      "expected_refund_amount": null,
+      "reason": "Trip summary timestamps and a charge record alone cannot independently verify arrival or waiting location.",
+      "evidence_refs": [
+        "/gps_telemetry",
+        "/chat_logs",
+        "/app_events",
+        "/trip_data"
+      ],
+      "acceptance_criteria": [
+        "Identify missing GPS, arrival/timer events and contact records.",
+        "Do not infer the driver was absent solely because records are missing."
+      ],
+      "assumptions": []
+    },
+    {
+      "dispute_id": "DISP-009",
+      "file": "DISP-009.json",
+      "scenario": "Trip summary and app timer disagree",
+      "expected_outcome": "inconclusive",
+      "expected_recommendation": "inconclusive",
+      "currency": "SGD",
+      "expected_refund_amount": null,
+      "reason": "Trip summary implies eight minutes; the app timer implies six. The policy does not resolve which clock controls.",
+      "evidence_refs": [
+        "/trip_data/driver_wait_start",
+        "/trip_data/cancellation_time",
+        "/app_events",
+        "/cancellation_policy/no_show_threshold_min"
+      ],
+      "acceptance_criteria": [
+        "Report the two-minute clock discrepancy.",
+        "Do not hide the conflict behind the fee-applied event."
+      ],
+      "assumptions": []
+    },
+    {
+      "dispute_id": "DISP-010",
+      "file": "DISP-010.json",
+      "scenario": "Rider replies but cannot reach pickup",
+      "expected_outcome": "uphold",
+      "expected_recommendation": "driver",
+      "currency": "SGD",
+      "expected_refund_amount": 0,
+      "reason": "The rider acknowledges being away. A reply is not boarding or an extension agreed by the driver; the eight-minute wait is documented.",
+      "evidence_refs": [
+        "/chat_logs",
+        "/gps_telemetry",
+        "/trip_data",
+        "/cancellation_policy"
+      ],
+      "acceptance_criteria": [
+        "Uphold SGD 5.",
+        "Do not confuse replying to a message with showing up or a granted extension."
+      ],
+      "assumptions": [
+        "There is no additional agreed extension or policy exemption in this record."
+      ]
+    },
+    {
+      "dispute_id": "DISP-011",
+      "file": "DISP-011.json",
+      "scenario": "Driver leaves before completing wait",
+      "expected_outcome": "reverse",
+      "expected_recommendation": "passenger",
+      "currency": "SGD",
+      "expected_refund_amount": 5,
+      "reason": "Driver message and moving GPS records contradict continuous presence at pickup. Delayed cancellation does not establish eight minutes of waiting there.",
+      "evidence_refs": [
+        "/gps_telemetry",
+        "/chat_logs",
+        "/trip_data/cancellation_time",
+        "/cancellation_policy"
+      ],
+      "acceptance_criteria": [
+        "Reverse SGD 5.",
+        "Check location through the wait, not just elapsed time between arrival and cancellation."
+      ],
+      "assumptions": [
+        "The no-show threshold requires waiting at the pickup; this is implicit in the sample scenario rather than explicitly stated in the four-field policy."
+      ]
+    },
+    {
+      "dispute_id": "DISP-012",
+      "file": "DISP-012.json",
+      "scenario": "One second short of no-show threshold",
+      "expected_outcome": "reverse",
+      "expected_recommendation": "passenger",
+      "currency": "SGD",
+      "expected_refund_amount": 5,
+      "reason": "Only 479 seconds elapsed against an eight-minute (480-second) no-show threshold.",
+      "evidence_refs": [
+        "/trip_data/driver_wait_start",
+        "/trip_data/cancellation_time",
+        "/cancellation_policy"
+      ],
+      "acceptance_criteria": [
+        "Reverse SGD 5 under the benchmark's exact-threshold interpretation.",
+        "Do not round 7:59 up to 8:00."
+      ],
+      "assumptions": [
+        "No rounding or grace tolerance is authorized. For this benchmark the no-show threshold controls a rider_no_show fee; expiration of free wait alone is insufficient."
+      ]
+    }
+  ]
+}

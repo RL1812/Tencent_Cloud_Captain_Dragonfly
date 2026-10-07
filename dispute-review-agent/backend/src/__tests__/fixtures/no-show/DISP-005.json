@@ -1,0 +1,177 @@
+{
+  "dispute_ticket": {
+    "dispute_id": "DISP-005",
+    "trip_id": "TRIP-SYN-5",
+    "filed_by": "rider",
+    "dispute_type": "no_show_charge",
+    "description": "I was at Tiong Bahru Plaza, but the driver waited near VivoCity. Please compare the GPS points with my booked pickup.",
+    "filed_at": "2026-09-16T09:20:00+08:00",
+    "status": "open"
+  },
+  "rider_profile": {
+    "rider_id": "R-SYN-5",
+    "name": "Synthetic Rider 5",
+    "account_age_days": 210,
+    "total_trips": 34,
+    "avg_rating": 4.5,
+    "dispute_history": {
+      "total_disputes": 0,
+      "upheld": 0,
+      "rejected": 0
+    },
+    "fraud_flags": 0,
+    "payment_method": "e-wallet"
+  },
+  "driver_profile": {
+    "driver_id": "D-SYN-5",
+    "name": "Synthetic Driver 5",
+    "account_age_days": 900,
+    "total_trips": 3201,
+    "avg_rating": 4.6,
+    "dispute_history": {
+      "total_disputes": 0,
+      "upheld_against": 0,
+      "rejected": 0
+    },
+    "fraud_flags": 0,
+    "vehicle": "Test sedan (SYN-5)"
+  },
+  "trip_data": {
+    "trip_id": "TRIP-SYN-5",
+    "rider_id": "R-SYN-5",
+    "driver_id": "D-SYN-5",
+    "pickup_location": {
+      "name": "Tiong Bahru Plaza",
+      "lat": 1.2847,
+      "lng": 103.8382
+    },
+    "dropoff_location": {
+      "name": "VivoCity",
+      "lat": 1.2648,
+      "lng": 103.8223
+    },
+    "scheduled_time": "2026-09-16T08:45:00+08:00",
+    "driver_arrival_time": "2026-09-16T08:45:00+08:00",
+    "driver_wait_start": "2026-09-16T08:45:00+08:00",
+    "cancellation_time": "2026-09-16T08:53:00+08:00",
+    "cancellation_fee": 5,
+    "cancellation_reason": "rider_no_show"
+  },
+  "gps_telemetry": [
+    {
+      "timestamp": "2026-09-16T08:43:00+08:00",
+      "lat": 1.2648,
+      "lng": 103.8223,
+      "speed_kmh": 0,
+      "status": "en_route"
+    },
+    {
+      "timestamp": "2026-09-16T08:45:00+08:00",
+      "lat": 1.2648,
+      "lng": 103.8223,
+      "speed_kmh": 0,
+      "status": "arrived"
+    },
+    {
+      "timestamp": "2026-09-16T08:47:00+08:00",
+      "lat": 1.2648,
+      "lng": 103.8223,
+      "speed_kmh": 0,
+      "status": "waiting"
+    },
+    {
+      "timestamp": "2026-09-16T08:50:00+08:00",
+      "lat": 1.2648,
+      "lng": 103.8223,
+      "speed_kmh": 0,
+      "status": "waiting"
+    },
+    {
+      "timestamp": "2026-09-16T08:53:00+08:00",
+      "lat": 1.2648,
+      "lng": 103.8223,
+      "speed_kmh": 0,
+      "status": "cancelled"
+    }
+  ],
+  "chat_logs": [
+    {
+      "timestamp": "2026-09-16T08:45:00+08:00",
+      "sender": "driver",
+      "type": "message",
+      "content": "I am waiting at VivoCity."
+    },
+    {
+      "timestamp": "2026-09-16T08:46:00+08:00",
+      "sender": "driver",
+      "type": "message",
+      "content": "Please come to the VivoCity pickup area."
+    },
+    {
+      "timestamp": "2026-09-16T08:47:00+08:00",
+      "sender": "driver",
+      "type": "call",
+      "content": "Outgoing in-app call rang for 22 seconds; not answered."
+    },
+    {
+      "timestamp": "2026-09-16T08:52:45+08:00",
+      "sender": "driver",
+      "type": "message",
+      "content": "I am still waiting. Please confirm whether you are coming."
+    },
+    {
+      "timestamp": "2026-09-16T08:53:00+08:00",
+      "sender": "system",
+      "type": "system",
+      "content": "Driver cancelled with reason rider_no_show. SGD 5.00 charged."
+    }
+  ],
+  "app_events": [
+    {
+      "timestamp": "2026-09-16T08:30:00+08:00",
+      "event_type": "booking_confirmed",
+      "details": "Booking TRIP-SYN-5 for rider R-SYN-5; pickup scheduled at 08:45."
+    },
+    {
+      "timestamp": "2026-09-16T08:30:10+08:00",
+      "event_type": "driver_assigned",
+      "details": "D-SYN-5 assigned."
+    },
+    {
+      "timestamp": "2026-09-16T08:45:00+08:00",
+      "event_type": "driver_arrived",
+      "details": "Driver manually tapped Arrived. Pickup geofence validation was unavailable."
+    },
+    {
+      "timestamp": "2026-09-16T08:45:00+08:00",
+      "event_type": "wait_timer_started",
+      "details": "Wait timer started at the recorded driver_wait_start timestamp."
+    },
+    {
+      "timestamp": "2026-09-16T08:45:05+08:00",
+      "event_type": "rider_notified",
+      "details": "Arrival push notification sent; read status unavailable."
+    },
+    {
+      "timestamp": "2026-09-16T08:50:00+08:00",
+      "event_type": "wait_timer_expired",
+      "details": "Five-minute free-wait period expired; rider has not boarded."
+    },
+    {
+      "timestamp": "2026-09-16T08:53:00+08:00",
+      "event_type": "cancellation_fee_applied",
+      "details": "Cancellation recorded as rider_no_show after 480 elapsed seconds; SGD 5.00 charged."
+    },
+    {
+      "timestamp": "2026-09-16T08:53:05+08:00",
+      "event_type": "driver_released",
+      "details": "Driver released from the cancelled trip."
+    }
+  ],
+  "cancellation_policy": {
+    "free_wait_time_min": 5,
+    "cancellation_fee_after_wait": 5,
+    "no_show_threshold_min": 8,
+    "fee_goes_to": "driver_compensation"
+  }
+}
