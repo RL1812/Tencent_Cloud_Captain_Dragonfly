@@ -18,7 +18,9 @@ datasets need their own schemas. Legacy case categories remain available.
 
 Normally call reviewDispute(dataset), which runs both advocates concurrently and
 then calls the Judge. It returns the ruling and advocateSubmissions.rider/driver.
-All model calls still use the existing TokenHub client and hy3 model.
+All model calls go through src/lib/llm-chat.ts: Google Gemini (free tier) when
+GEMINI_API_KEY is set — gemini-3.8-flash first, then GEMINI_FALLBACK_MODELS —
+otherwise Tencent TokenHub (hy3).
 
 POST /api/disputes/dataset-review accepts the JSON block as the body and returns
 { data: MultiAgentReview }. It does not persist a case or populate the dashboard.
@@ -47,8 +49,17 @@ Singapore sample. There is no payment execution.
 
 Unavailable or invalid model output returns mode=fallback and confidenceScore=0.
 If either advocate fails, the Judge call is skipped and the result is inconclusive.
-No fallback chooses a winner based on ratings or statement length. Existing
-cases stay pending after failed or inconclusive reviews.
+No fallback chooses a winner based on ratings or statement length. For stored
+cases: a failed review (mode=fallback) leaves the case pending for a retry; an
+inconclusive ruling or Judge confidence below 60 escalates the case to a human
+(status under_review, escalation.needsHuman); otherwise the case is resolved.
+A human decision (POST /api/disputes/:id/override) closes the case.
+Earlier reviews, escalations and human decisions are never shown to the agents.
+
+Model output is checked before use: confidenceScore is rounded to an integer
+0-100, and each dataset policy argument must cite at least one
+/cancellation_policy/ field (it may also cite the facts it applies to).
+Rejections are logged with the reason (context "Agents").
 
 ## Dataset interpretation
 
@@ -65,6 +76,7 @@ GPS, chat or policy service is queried. The dataset has no separate driver state
 
 The implementation currently uses ordinary async TypeScript orchestration.
 It can be wrapped in LangGraph nodes: input -> parallel advocates -> Judge -> output.
-LangGraph can retain the existing TokenHub client. LangChain is optional for
-model wrappers or future retrieval tools. No framework migration, prioritization,
-human escalation or learning feedback loop is implemented in this change.
+LangGraph can retain the existing chat client. LangChain is optional for
+model wrappers or future retrieval tools. No framework migration, prioritization
+or learning feedback loop is implemented; human escalation is handled by the
+case store (see above).

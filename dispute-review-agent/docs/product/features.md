@@ -52,6 +52,6 @@ AI 驱动的滴滴司乘纠纷智能审查系统，通过大语言模型自动�
 ## 技术架构
 - **前端**：React 19 + Vite + TanStack Query + shadcn/ui + Tailwind CSS 4
 - **后端**：Express + TypeScript + Zod 校验
-- **AI 审查**：Tencent Hunyuan (TokenHub) 大语言模型，零配置沙箱代理
+- **AI 审查**：三智能体（乘客代理、司机代理、法官），默认 Google Gemini 免费层（gemini-3.8-flash，失败时自动切换 gemini-3.1-flash-lite 等），也可使用 Tencent TokenHub
 - **知识库**（全部开源免费，本地运行）：PostgreSQL + pgvector（数据库与向量检索）、Ollama（模型服务）、bge-m3（向量模型）、Qwen2.5（问答模型）、unpdf（PDF 解析）、tesseract.js（OCR）
 - **设计风格**：专业深蓝侧边栏 + 浅色主内容区，信任感与权威感

@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { DatasetImport } from '@/components/DatasetImport';
 import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
 import { getErrorMessage } from '@/lib/api-client';
@@ -53,11 +54,14 @@ const initialForm: CreateDisputeDTO = {
 
 export default function SubmitCase() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [form, setForm] = useState<CreateDisputeDTO>(initialForm);
 
   const createMutation = useMutation({
     mutationFn: disputeApi.create,
     onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['disputes'] });
+      queryClient.invalidateQueries({ queryKey: ['dispute-stats'] });
       toast.success('案件创建成功');
       navigate(`/cases/${data.id}`);
     },
@@ -130,6 +134,8 @@ export default function SubmitCase() {
         <span className="text-foreground">提交案件</span>
       </div>
       <h1 className="text-2xl font-bold mb-6">提交新纠纷案件</h1>
+
+      <DatasetImport />
 
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Section 1: Case Info */}

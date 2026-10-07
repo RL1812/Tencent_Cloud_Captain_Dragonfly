@@ -4,13 +4,13 @@ import request from 'supertest';
 import { createApp } from '../app';
 import { env } from '../config/env';
 import { disputeStore } from '../modules/dispute/store';
-import { chatCompletion } from '../lib/hunyuan-chat';
+import { chatCompletion } from '../lib/llm-chat';
 import { sampleDatasetSchema } from '../modules/dispute/agents/dataset';
 import { runRiderAdvocate } from '../modules/dispute/agents/rider-advocate';
 import { reviewDispute } from '../modules/dispute/agents/orchestrator';
-import { formatCaseContext, sourceIndex } from '../modules/dispute/agents/shared';
+import { formatCaseContext, parseJsonObject, sourceIndex } from '../modules/dispute/agents/shared';
 
-jest.mock('../lib/hunyuan-chat', () => ({ chatCompletion: jest.fn() }));
+jest.mock('../lib/llm-chat', () => ({ chatCompletion: jest.fn() }));
 const chat = jest.mocked(chatCompletion);
 const markdown = fs.readFileSync(path.resolve(__dirname,
   '../../../../RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG).md'), 'utf8');
@@ -74,6 +74,14 @@ test('invalid coordinates, IDs and timestamp formats are rejected before model c
   }).success).toBe(false);
 });
 
+test('a policy argument may cite the facts it applies the policy to', async () => {
+  chat.mockResolvedValue(JSON.stringify({ ...advocate, policyArguments: [{
+    argument: 'Wait exceeded the threshold.',
+    sourceRefs: ['/cancellation_policy/no_show_threshold_min', '/trip_data/driver_wait_start'],
+  }], confidenceScore: 72.6 }));
+  expect(await runRiderAdvocate(dataset)).toMatchObject({ mode: 'llm', confidenceScore: 73 });
+});
+
 test('valid advocate output has role, dispute ID, provenance and evidence references', async () => {
   chat.mockResolvedValue(JSON.stringify(advocate));
   const result = await runRiderAdvocate(dataset);
@@ -131,6 +139,14 @@ test('dataset endpoint accepts the raw JSON and returns both submissions', async
   expect(response.body.data.advocateSubmissions.driver.agent).toBe('driver_advocate');
 });
 
+test('importing the same dataset twice returns the existing case', async () => {
+  const app = createApp();
+  const first = await request(app).post(env.API_PREFIX + '/disputes/import-dataset').send(fixture).expect(201);
+  const again = await request(app).post(env.API_PREFIX + '/disputes/import-dataset').send(fixture).expect(200);
+  expect(first.body.existing).toBe(false);
+  expect(again.body).toMatchObject({ existing: true, data: { id: first.body.data.id, caseNumber: 'DISP-002' } });
+});
+
 test('dataset endpoint rejects invalid records before calling any model', async () => {
   await request(createApp()).post(env.API_PREFIX + '/disputes/dataset-review')
     .send({ ...fixture, gps_telemetry: 'not an array' }).expect(400);
@@ -145,4 +161,25 @@ test('legacy review remains compatible and failed analysis leaves the case pendi
   expect(response.body.data.review.mode).toBe('fallback');
   const legacy = disputeStore.getById('case-002')!;
   expect(JSON.parse(formatCaseContext(legacy)).originalRecord.review).toBeUndefined();
+});
+
+test('prior rulings, escalations and human decisions are hidden from the agents', () => {
+  const decided = {
+    ...disputeStore.getById('case-001')!,
+    escalation: { needsHuman: false, reason: 'decided' },
+    humanOverride: { recommendation: 'driver' as const, reason: 'human', decidedAt: '2024-12-11T00:00:00Z' },
+  };
+  const context = JSON.parse(formatCaseContext(decided));
+  for (const key of ['review', 'escalation', 'humanOverride', 'dataset']) {
+    expect(context.originalRecord[key]).toBeUndefined();
+    expect(context.allowedSourceRefs.some((ref: string) => ref.startsWith('/' + key))).toBe(false);
+  }
+  expect(context.originalRecord.driver.name).toBe(decided.driver.name);
+});
+
+test('model JSON is parsed from a code fence or surrounding prose', () => {
+  expect(parseJsonObject('```json\n{"a":1}\n```')).toEqual({ a: 1 });
+  expect(parseJsonObject('Here is the ruling:\n```json\n{"a":1}\n```\nDone.')).toEqual({ a: 1 });
+  expect(parseJsonObject('Sure. {"a":{"b":2}} Hope this helps.')).toEqual({ a: { b: 2 } });
+  expect(() => parseJsonObject('no json here')).toThrow();
 });

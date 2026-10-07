@@ -8,6 +8,8 @@ import { AppError } from '../../middleware/errorHandler';
 import { disputeStore } from './store';
 import { reviewDispute } from './agents/orchestrator';
 import { sampleDatasetSchema } from './agents/dataset';
+import { datasetToCreateDTO } from './import-dataset';
+import { EVIDENCE_URL_PREFIX } from './uploads';
 import type { CreateDisputeDTO } from './types';
 
 export const disputeRouter: Router = Router();
@@ -18,6 +20,27 @@ disputeRouter.post('/dataset-review', async (req: Request, res: Response) => {
   const dataset = sampleDatasetSchema.parse(req.body);
   const review = await reviewDispute(dataset);
   res.json({ data: review });
+});
+
+/**
+ * POST /api/disputes/import-dataset — Turn a sample dataset (DISP-002 JSON block)
+ * into a dashboard case. The original dataset is kept and used for the review.
+ * A dataset already imported returns its existing case (200, existing: true).
+ */
+disputeRouter.post('/import-dataset', async (req: Request, res: Response) => {
+  const dataset = sampleDatasetSchema.parse(req.body);
+  const caseNumber = dataset.dispute_ticket.dispute_id;
+  const existing = disputeStore.getAll().find((c) => c.caseNumber === caseNumber);
+  if (existing) {
+    res.json({ data: existing, existing: true });
+    return;
+  }
+  const created = disputeStore.create(datasetToCreateDTO(dataset), {
+    caseNumber,
+    dataset,
+    createdAt: dataset.dispute_ticket.filed_at,
+  });
+  res.status(201).json({ data: created, existing: false });
 });
 
 // ============================================
@@ -39,13 +62,21 @@ const tripSchema = z.object({
   distance: z.number(),
   vehicleModel: z.string(),
   plateNumber: z.string(),
+  currency: z.enum(['CNY', 'SGD']).optional(),
 });
 
 const evidenceInputSchema = z.object({
-  party: z.enum(['driver', 'rider']),
+  party: z.enum(['driver', 'rider', 'platform']),
   kind: z.enum(['text', 'chat', 'gps', 'payment', 'photo']),
   title: z.string(),
   content: z.string(),
+  // Set when a file was uploaded through POST /api/uploads
+  fileName: z.string().optional(),
+  fileUrl: z
+    .string()
+    .refine((u) => u.startsWith(EVIDENCE_URL_PREFIX) && !u.includes('..'), '附件地址无效')
+    .optional(),
+  mimeType: z.string().optional(),
 });
 
 const createDisputeSchema = z.object({
@@ -129,12 +160,10 @@ disputeRouter.post('/:id/review', async (req: Request, res: Response) => {
   disputeStore.setStatus(id, 'under_review');
 
   try {
-    const review = await reviewDispute(dispute);
+    // Imported dataset cases are reviewed on the original dataset (precise citations)
+    const review = await reviewDispute(dispute.dataset ?? dispute);
+    // The store decides the status: resolved / needs a human / retry after failure
     const updated = disputeStore.updateReview(id, review);
-    // A failed or inconclusive review must remain open for a later retry.
-    if (review.mode === 'fallback' || review.recommendation === 'inconclusive') {
-      disputeStore.setStatus(id, 'pending');
-    }
     res.json({ data: updated });
   } catch (error) {
     // Revert status on failure
@@ -143,4 +172,22 @@ disputeRouter.post('/:id/review', async (req: Request, res: Response) => {
       error instanceof Error ? error.message : 'AI审查失败，请稍后重试';
     throw new AppError(500, message);
   }
+});
+
+/**
+ * POST /api/disputes/:id/override — A human reviewer decides the case
+ */
+const overrideSchema = z.object({
+  recommendation: z.enum(['driver', 'passenger', 'shared', 'inconclusive']),
+  reason: z.string(),
+});
+
+disputeRouter.post('/:id/override', async (req: Request, res: Response) => {
+  const id = String(req.params.id);
+  const { recommendation, reason } = overrideSchema.parse(req.body);
+  const updated = disputeStore.override(id, recommendation, reason);
+  if (!updated) {
+    throw new AppError(404, '案件不存在');
+  }
+  res.json({ data: updated });
 });

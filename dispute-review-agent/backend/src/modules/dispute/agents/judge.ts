@@ -1,9 +1,12 @@
-import { chatCompletion } from '../../../lib/hunyuan-chat';
+import { chatCompletion } from '../../../lib/llm-chat';
 import { judgeOutputSchema, type AgentInput, type AdvocateCase, type JudgeReview } from './contracts';
 import {
   assertSourceRefs, checkAdvocateSources, disputeId, evidenceInstructions,
   formatCaseContext, parseJsonObject, validateInput,
 } from './shared';
+import { createLogger } from '../../../config/logger';
+
+const logger = createLogger('Agents');
 
 function unavailable(input: AgentInput): JudgeReview {
   return {
@@ -52,7 +55,7 @@ Return only this JSON object:
  "recommendation":"driver|passenger|shared|inconclusive",
  "recommendationReasoning":"ruling with source-grounded explanation",
  "suggestedActions":["specific action including amount and recipient when justified"],
- "confidenceScore":0, "confidenceReasoning":"uncertainties",
+ "confidenceScore":"integer from 0 to 100", "confidenceReasoning":"uncertainties",
  "sourceRefs":["/existing/source/path"], "missingEvidence":["missing facts or unresolved conflicts"]
 }
 Select one recommendation enum value. Do not output the pipe-separated example literally.`,
@@ -72,7 +75,8 @@ Select one recommendation enum value. Do not output the pipe-separated example l
       ...output, disputeId: disputeId(record), mode: 'llm',
       reviewedAt: new Date().toISOString(),
     };
-  } catch {
+  } catch (err) {
+    logger.warn({ agent: 'judge', err: err instanceof Error ? err.message : String(err) }, 'Judge output unavailable or invalid');
     return unavailable(record);
   }
 }
