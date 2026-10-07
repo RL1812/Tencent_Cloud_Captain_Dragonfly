@@ -10,12 +10,10 @@ import type {
 } from '../types/dispute';
 
 export const typeLabels: Record<DisputeType, string> = {
-  fare_dispute: '费用纠纷',
-  route_dispute: '路线纠纷',
-  behavior_complaint: '行为投诉',
-  safety_issue: '安全问题',
-  cancellation_dispute: '取消纠纷',
-  other: '其他',
+  route_deviation: '绕路',
+  no_show_charge: '爽约收费',
+  property_damage: '财物损坏',
+  safety_accident: '安全事故',
 };
 
 export const priorityLabels: Record<DisputePriority, string> = {

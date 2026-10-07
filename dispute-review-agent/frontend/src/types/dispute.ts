@@ -5,12 +5,10 @@
 export type DisputeStatus = 'pending' | 'under_review' | 'resolved';
 export type DisputePriority = 'low' | 'medium' | 'high' | 'urgent';
 export type DisputeType =
-  | 'fare_dispute'
-  | 'route_dispute'
-  | 'behavior_complaint'
-  | 'safety_issue'
-  | 'cancellation_dispute'
-  | 'other';
+  | 'route_deviation'
+  | 'no_show_charge'
+  | 'property_damage'
+  | 'safety_accident';
 export type Recommendation = 'driver' | 'passenger' | 'shared' | 'inconclusive';
 
 export interface Party {

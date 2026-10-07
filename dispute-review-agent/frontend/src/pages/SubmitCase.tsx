@@ -33,7 +33,7 @@ import type {
 const initialForm: CreateDisputeDTO = {
   title: '',
   priority: 'medium',
-  type: 'fare_dispute',
+  type: 'route_deviation',
   driver: { name: '', id: '', rating: 5, statement: '' },
   passenger: { name: '', id: '', rating: 5, statement: '' },
   trip: {

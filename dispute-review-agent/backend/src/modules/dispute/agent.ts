@@ -166,35 +166,31 @@ function generateFallbackReview(caseData: DisputeCase): AIReview {
 
   // Type-specific adjustments
   const typePolicies: Record<string, string[]> = {
-    fare_dispute: [
+    route_deviation: [
       '《计费规则》— 按实际行驶路线计费',
       '《绕路认定标准》— 偏离导航推荐路线超过10%可认定为绕路',
+      '《路线合规规范》— 司机应按导航推荐路线行驶，改路线需征得乘客同意',
       '《退款政策》— 确认绕路后应退还差价',
     ],
-    route_dispute: [
-      '《路线合规规范》— 司机应按导航推荐路线行驶',
-      '《乘客知情权》— 改路线需征得乘客同意',
+    no_show_charge: [
+      '《取消订单政策》— 超过等待时间可取消',
+      '《爽约处理规则》— 爽约方承担相应责任',
     ],
-    behavior_complaint: [
-      '《司机服务标准》— 司机应保持礼貌和专业',
-      '《乘客行为规范》— 乘客不得辱骂或威胁司机',
+    property_damage: [
+      '《财物损坏处理规则》— 责任方承担赔偿，需提供照片等证据',
+      '《平台服务协议》— 车内财物损坏的申报与定损流程',
     ],
-    safety_issue: [
+    safety_accident: [
       '《乘车安全规范》— 乘客必须系好安全带',
       '《司机行为准则》— 遇安全威胁时司机有权终止行程',
       '《安全事件处理流程》— 应保留录音录像证据',
     ],
-    cancellation_dispute: [
-      '《取消订单政策》— 超过等待时间可取消',
-      '《爽约处理规则》— 爽约方承担相应责任',
-    ],
-    other: [
-      '《平台服务协议》',
-      '《纠纷处理流程》',
-    ],
   };
 
-  const policies = typePolicies[caseData.type] || typePolicies.other;
+  const policies = typePolicies[caseData.type] || [
+    '《平台服务协议》',
+    '《纠纷处理流程》',
+  ];
 
   // Estimated fare per km for sanity check
   const farePerKm = trip.distance > 0 ? trip.fare / trip.distance : 0;

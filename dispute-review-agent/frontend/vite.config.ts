@@ -17,10 +17,13 @@ export default defineConfig({
     port: 5173,
     allowedHosts: true,
     cors: true,
-    hmr: {
-        protocol: 'wss',
-        host: `5173-${process.env.X_IDE_SPACE_KEY}.e2b.${process.env.X_IDE_SPACE_REGION}.${process.env.X_IDE_SPACE_HOST}`
-    },
+    // Sandbox (WorkBuddy) needs a custom HMR host; local dev uses Vite defaults.
+    hmr: process.env.X_IDE_SPACE_KEY
+      ? {
+          protocol: 'wss',
+          host: `5173-${process.env.X_IDE_SPACE_KEY}.e2b.${process.env.X_IDE_SPACE_REGION}.${process.env.X_IDE_SPACE_HOST}`,
+        }
+      : true,
     proxy: {
       '/api': {
         target: 'http://localhost:3000',
