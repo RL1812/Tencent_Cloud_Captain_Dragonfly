@@ -63,7 +63,14 @@ apiClient.interceptors.response.use(
  */
 export function getErrorMessage(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    return error.response?.data?.message || error.message || 'An error occurred';
+    const data = error.response?.data;
+    // Validation errors carry per-field messages; show them instead of a generic text
+    if (Array.isArray(data?.errors) && data.errors.length > 0) {
+      return data.errors
+        .map((e: { field: string; message: string }) => `${e.field}: ${e.message}`)
+        .join('；');
+    }
+    return data?.message || error.message || 'An error occurred';
   }
   if (error instanceof Error) {
     return error.message;

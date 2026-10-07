@@ -3,7 +3,12 @@
  */
 
 import { apiClient } from './api-client';
-import type { DisputeCase, CreateDisputeDTO, DashboardStats } from '../types/dispute';
+import type {
+  DisputeCase,
+  CreateDisputeDTO,
+  DashboardStats,
+  NewEvidence,
+} from '../types/dispute';
 
 export const disputeApi = {
   getAll: () =>
@@ -24,6 +29,11 @@ export const disputeApi = {
   create: (dto: CreateDisputeDTO) =>
     apiClient
       .post<{ data: DisputeCase }>('/disputes', dto)
+      .then((r) => r.data.data),
+
+  addEvidence: (id: string, dto: NewEvidence) =>
+    apiClient
+      .post<{ data: DisputeCase }>(`/disputes/${id}/evidence`, dto)
       .then((r) => r.data.data),
 
   review: (id: string) =>

@@ -7,7 +7,7 @@
  */
 
 import { chatCompletion } from '../../lib/hunyuan-chat';
-import type { DisputeCase, AIReview, Recommendation } from './types';
+import type { DisputeCase, AIReview, Recommendation, EvidenceItem } from './types';
 
 const SYSTEM_PROMPT = `你是一名专业的网约车平台纠纷审查AI Agent，负责客观、公正地审查司机与乘客之间的纠纷，并给出有理有据的处理建议。
 
@@ -49,6 +49,25 @@ const SYSTEM_PROMPT = `你是一名专业的网约车平台纠纷审查AI Agent�
 - 始终提供具体、可操作的建议措施
 - 所有分析内容使用简体中文`;
 
+const KIND_LABELS: Record<EvidenceItem['kind'], string> = {
+  text: '文字说明',
+  chat: '聊天记录',
+  gps: 'GPS数据',
+  payment: '付款记录',
+  photo: '照片',
+};
+
+function formatEvidence(items: EvidenceItem[]): string {
+  const section = (title: string, party: EvidenceItem['party']) => {
+    const list = items.filter((e) => e.party === party);
+    if (list.length === 0) return `#### ${title}\n- （未提交证据）`;
+    return `#### ${title}\n${list
+      .map((e) => `- [${KIND_LABELS[e.kind]}] ${e.title}：${e.content}`)
+      .join('\n')}`;
+  };
+  return `${section('司机方证据', 'driver')}\n\n${section('乘客方证据', 'rider')}`;
+}
+
 function buildCaseMessage(caseData: DisputeCase): string {
   const trip = caseData.trip;
   const drv = caseData.driver;
@@ -84,8 +103,7 @@ function buildCaseMessage(caseData: DisputeCase): string {
 - 车辆：${trip.vehicleModel}（${trip.plateNumber}）
 
 ### 证据信息
-- 证据描述：${evi.description}
-- 证据清单：${evi.items.join('、')}
+${formatEvidence(evi)}
 
 请审查此纠纷并按指定JSON格式回复。`;
 }
@@ -211,7 +229,7 @@ function generateFallbackReview(caseData: DisputeCase): AIReview {
     keyIssues: [
       `双方陈述存在分歧：司机称"${drv.statement.substring(0, 30)}..."，乘客称"${pas.statement.substring(0, 30)}..."`,
       `历史评分差异：司机${drv.rating}分 vs 乘客${pas.rating}分`,
-      `证据情况：${evi.items.length}项证据（${evi.items.join('、')}）`,
+      `证据情况：${evi.length}项证据（${evi.map((e) => e.title).join('、')}）`,
       trip.distance > 0
         ? `${fareNote}行驶${trip.distance}公里，车费¥${trip.fare}`
         : '行程未正常完成',
@@ -222,7 +240,7 @@ function generateFallbackReview(caseData: DisputeCase): AIReview {
     passengerPerspective: `乘客${pas.name}（账号${pas.id}，评分${pas.rating}/5.0）的陈述长度${pasStmtLen}字，${
       pasStmtLen > drvStmtLen ? '提供了较详细的说明' : '说明相对简略'
     }。${ratingDiff < 0 ? `其历史评分(${pas.rating})高于司机(${drv.rating})，信用记录较好。` : `其历史评分(${pas.rating})与司机(${drv.rating})相当。`}综合来看，${passengerScore > driverScore ? '乘客方主张可信度较高' : '乘客方主张可信度一般'}。`,
-    evidenceAnalysis: `现有证据包括${evi.items.length}项：${evi.items.join('、')}。${evi.description}。证据的充分性${evi.items.length >= 3 ? '较好，能够辅助判断事实' : '一般，建议补充更多证据'}。由于当前为规则分析模式（非AI深度分析），建议结合录音、录像等关键证据进行人工复核。`,
+    evidenceAnalysis: `现有证据包括${evi.length}项：${evi.map((e) => e.title).join('、')}。证据的充分性${evi.length >= 3 ? '较好，能够辅助判断事实' : '一般，建议补充更多证据'}。由于当前为规则分析模式（非AI深度分析），建议结合录音、录像等关键证据进行人工复核。`,
     policyReferences: policies,
     recommendation,
     recommendationReasoning: `基于规则分析系统评估：司机综合得分${driverScore.toFixed(1)}，乘客综合得分${passengerScore.toFixed(1)}。${recommendation === 'shared' ? '双方得分接近，均有部分责任。' : recommendation === 'driver' ? '司机方综合得分更高，主张更具可信度。' : recommendation === 'passenger' ? '乘客方综合得分更高，主张更具可信度。' : '双方得分差距不大，现有证据不足以做出明确判定。'}建议结合实际录音录像证据做最终确认。`,

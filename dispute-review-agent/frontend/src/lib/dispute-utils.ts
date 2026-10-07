@@ -6,6 +6,8 @@ import type {
   DisputeStatus,
   DisputePriority,
   DisputeType,
+  EvidenceKind,
+  EvidenceParty,
   Recommendation,
 } from '../types/dispute';
 
@@ -14,6 +16,19 @@ export const typeLabels: Record<DisputeType, string> = {
   no_show_charge: '爽约收费',
   property_damage: '财物损坏',
   safety_accident: '安全事故',
+};
+
+export const evidencePartyLabels: Record<EvidenceParty, string> = {
+  driver: '司机',
+  rider: '乘客',
+};
+
+export const evidenceKindLabels: Record<EvidenceKind, string> = {
+  text: '文字说明',
+  chat: '聊天记录',
+  gps: 'GPS数据',
+  payment: '付款记录',
+  photo: '照片',
 };
 
 export const priorityLabels: Record<DisputePriority, string> = {

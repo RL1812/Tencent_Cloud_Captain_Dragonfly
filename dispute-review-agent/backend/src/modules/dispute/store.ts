@@ -2,9 +2,24 @@
  * Dispute Review — In-memory data store with sample cases
  */
 
-import type { DisputeCase, CreateDisputeDTO, DashboardStats } from './types';
+import type {
+  DisputeCase,
+  CreateDisputeDTO,
+  DashboardStats,
+  EvidenceItem,
+  NewEvidence,
+} from './types';
 
 let counter = 1000;
+let evidenceCounter = 0;
+
+function makeEvidence(
+  input: NewEvidence,
+  uploadedAt: string = new Date().toISOString()
+): EvidenceItem {
+  evidenceCounter++;
+  return { id: `ev-${String(evidenceCounter).padStart(3, '0')}`, ...input, uploadedAt };
+}
 
 const cases: DisputeCase[] = [
   {
@@ -40,10 +55,12 @@ const cases: DisputeCase[] = [
       vehicleModel: '现代伊兰特',
       plateNumber: '粤B·D7K28',
     },
-    evidence: {
-      description: '车内录音和行程录像均已调取',
-      items: ['车内录音（全程）', '行车记录仪视频', 'GPS轨迹记录'],
-    },
+    evidence: [
+      makeEvidence({ party: 'driver', kind: 'text', title: '车内录音（全程）', content: '车内录音已开启，记录了司机三次提醒系安全带及乘客言语威胁的过程。' }, '2024-12-10T09:30:00Z'),
+      makeEvidence({ party: 'driver', kind: 'text', title: '行车记录仪视频', content: '行程录像已调取。' }, '2024-12-10T09:30:00Z'),
+      makeEvidence({ party: 'driver', kind: 'gps', title: 'GPS轨迹记录', content: '行程 01:15–01:35，距离10.2公里，司机在途中路边停车并终止订单。' }, '2024-12-10T09:30:00Z'),
+      makeEvidence({ party: 'rider', kind: 'text', title: '乘客说明', content: '乘客称司机在陌生地点停车赶人且态度凶，要求退款并补偿。' }, '2024-12-10T10:00:00Z'),
+    ],
     review: {
       summary: '乘客拒绝系安全带并对司机言语威胁，司机基于安全考虑终止行程，行为合理。',
       keyIssues: [
@@ -113,10 +130,11 @@ const cases: DisputeCase[] = [
       vehicleModel: '丰田凯美瑞',
       plateNumber: '粤B·G3F92',
     },
-    evidence: {
-      description: '导航路线记录和实际行驶轨迹待比对',
-      items: ['平台导航记录', 'GPS实际轨迹', '同路线历史车费记录'],
-    },
+    evidence: [
+      makeEvidence({ party: 'driver', kind: 'text', title: '平台导航记录', content: '导航推荐两条路线，司机选择了耗时最短的一条。' }, '2024-12-15T16:00:00Z'),
+      makeEvidence({ party: 'driver', kind: 'gps', title: 'GPS实际轨迹', content: '实际行驶轨迹待与导航推荐路线比对。' }, '2024-12-15T16:00:00Z'),
+      makeEvidence({ party: 'rider', kind: 'payment', title: '同路线历史车费记录', content: '同一路线以往车费明显低于本次车费。' }, '2024-12-15T16:30:00Z'),
+    ],
   },
   {
     id: 'case-003',
@@ -151,10 +169,11 @@ const cases: DisputeCase[] = [
       vehicleModel: '比亚迪秦',
       plateNumber: '粤B·E8H12',
     },
-    evidence: {
-      description: '行程录音和等待时间记录可查',
-      items: ['车内录音', '订单等待时间记录', '司机接单记录'],
-    },
+    evidence: [
+      makeEvidence({ party: 'driver', kind: 'text', title: '订单等待时间记录', content: '司机到达上车点后等待时间记录。' }, '2024-12-16T14:00:00Z'),
+      makeEvidence({ party: 'driver', kind: 'text', title: '司机接单记录', content: '司机接单及到达时间记录。' }, '2024-12-16T14:00:00Z'),
+      makeEvidence({ party: 'rider', kind: 'text', title: '车内录音', content: '行程录音可查，涉及乘客中途改地址及取消的对话。' }, '2024-12-16T14:10:00Z'),
+    ],
   },
 ];
 
@@ -195,10 +214,18 @@ export const disputeStore = {
       driver: dto.driver,
       passenger: dto.passenger,
       trip: dto.trip,
-      evidence: dto.evidence,
+      evidence: dto.evidence.map((e) => makeEvidence(e)),
     };
     cases.push(newCase);
     return newCase;
+  },
+
+  addEvidence(id: string, input: NewEvidence): DisputeCase | undefined {
+    const c = cases.find((c) => c.id === id);
+    if (!c) return undefined;
+    c.evidence.push(makeEvidence(input));
+    c.updatedAt = new Date().toISOString();
+    return c;
   },
 
   updateReview(id: string, review: DisputeCase['review']): DisputeCase | undefined {
