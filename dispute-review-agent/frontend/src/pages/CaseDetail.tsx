@@ -30,10 +30,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   AgentTranscript,
-  EscalationPanel,
   FallbackNotice,
-  HumanDecisionCard,
+  HumanDecisionPanel,
+  JudgeChecklist,
   JudgeSources,
+  PrecedentsUsed,
 } from '@/components/AgentReview';
 import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
@@ -52,7 +53,7 @@ import {
   formatFare,
 } from '@/lib/dispute-utils';
 import { cn } from '@/lib/utils';
-import type { DisputeCase, AIReview, NewEvidence, Party, Recommendation } from '@/types/dispute';
+import type { DisputeCase, AIReview, HumanDecisionInput, NewEvidence, Party } from '@/types/dispute';
 
 // --- Party Card ---
 function PartyCard({ title, party, icon: Icon }: { title: string; party: Party; icon: React.ElementType }) {
@@ -204,6 +205,8 @@ function AIReviewContent({ review }: { review: AIReview }) {
         </CardContent>
       </Card>
 
+      <PrecedentsUsed review={review} />
+      <JudgeChecklist review={review} />
       <JudgeSources review={review} />
 
       {/* Policy References */}
@@ -317,11 +320,21 @@ export default function CaseDetail() {
   });
 
   const overrideMutation = useMutation({
-    mutationFn: ({ rec, reason }: { rec: Recommendation; reason: string }) =>
-      disputeApi.override(id!, rec, reason),
+    mutationFn: (decision: HumanDecisionInput) => disputeApi.override(id!, decision),
+    onSuccess: (updated) => {
+      refreshCase();
+      toast.success(updated.humanOverride?.useAsPrecedent
+        ? 'Human decision recorded and added to precedents.'
+        : 'Human decision recorded.');
+    },
+    onError: (error) => toast.error(getErrorMessage(error)),
+  });
+
+  const withdrawMutation = useMutation({
+    mutationFn: () => disputeApi.clearOverride(id!),
     onSuccess: () => {
       refreshCase();
-      toast.success('Human decision recorded.');
+      toast.success('Human decision withdrawn.');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -440,15 +453,16 @@ export default function CaseDetail() {
         </>
       )}
 
-      {/* Human escalation / decision */}
-      {c.escalation?.needsHuman && !reviewMutation.isPending && (
-        <EscalationPanel
-          reason={c.escalation.reason}
-          pending={overrideMutation.isPending}
-          onSubmit={(rec, reason) => overrideMutation.mutate({ rec, reason })}
+      {/* A human may decide any case; escalated cases open this panel automatically. */}
+      {!reviewMutation.isPending && (
+        <HumanDecisionPanel
+          key={`${c.humanOverride?.decidedAt ?? 'none'}-${c.escalation?.needsHuman ?? false}`}
+          c={c}
+          pending={overrideMutation.isPending || withdrawMutation.isPending}
+          onSubmit={(decision) => overrideMutation.mutateAsync(decision)}
+          onWithdraw={() => withdrawMutation.mutate()}
         />
       )}
-      <HumanDecisionCard c={c} />
 
       {/* AI Review Section */}
       {reviewMutation.isPending ? (

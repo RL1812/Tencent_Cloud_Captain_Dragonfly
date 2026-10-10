@@ -13,6 +13,7 @@ import type {
   LearningFeedback,
 } from './types';
 import type { SampleDataset } from './agents/dataset';
+import { precedentFromCase, precedentStore } from './precedents';
 
 let counter = 1000;
 let evidenceCounter = 0;
@@ -242,12 +243,18 @@ export const disputeStore = {
     const c = cases.find((c) => c.id === id);
     if (!c || !review) return undefined;
     c.review = review;
-    c.humanOverride = undefined;
-    c.learningFeedback = undefined;
     if (review.priorityAssessment) {
       c.priorityAssessment = review.priorityAssessment;
       c.priority = review.priorityAssessment.priority;
     }
+    // A human decision stands: retain the new AI result for reference without
+    // reopening the case or discarding either feedback mechanism.
+    if (c.humanOverride) {
+      c.status = 'resolved';
+      c.updatedAt = new Date().toISOString();
+      return c;
+    }
+    c.learningFeedback = undefined;
     const failed = review.mode === 'fallback';
     if (failed) {
       // Review could not run: stay open for a retry, nothing to escalate
@@ -268,15 +275,46 @@ export const disputeStore = {
   },
 
   /** A human reviewer's decision; closes the case and records it for later learning. */
-  override(id: string, recommendation: Recommendation, reason: string): DisputeCase | undefined {
+  override(
+    id: string,
+    decision: {
+      recommendation: Recommendation;
+      reason: string;
+      decidedBy?: string;
+      useAsPrecedent: boolean;
+    }
+  ): DisputeCase | undefined {
     const c = cases.find((c) => c.id === id);
     if (!c) return undefined;
     const now = new Date().toISOString();
-    c.humanOverride = { recommendation, reason, decidedAt: now };
+    c.humanOverride = { ...decision, decidedAt: now };
     c.escalation = { needsHuman: false, reason: 'Resolved by a human reviewer.' };
     c.status = 'resolved';
     c.updatedAt = now;
+    if (decision.useAsPrecedent) precedentStore.upsert(precedentFromCase(c, c.humanOverride));
+    else precedentStore.remove(c.caseNumber);
     return c;
+  },
+
+  /** Withdraws a human decision and restores the status implied by the AI result. */
+  clearOverride(id: string): DisputeCase | undefined {
+    const c = cases.find((item) => item.id === id);
+    if (!c) return undefined;
+    if (!c.humanOverride) return c;
+    c.humanOverride = undefined;
+    c.learningFeedback = undefined;
+    precedentStore.remove(c.caseNumber);
+    if (c.review) return this.updateReview(id, c.review);
+    c.escalation = undefined;
+    c.status = 'pending';
+    c.updatedAt = new Date().toISOString();
+    return c;
+  },
+
+  /** A deleted precedent remains a decision, but no longer teaches the Judge. */
+  unmarkPrecedent(caseNumber: string): void {
+    const c = cases.find((item) => item.caseNumber === caseNumber);
+    if (c?.humanOverride) c.humanOverride.useAsPrecedent = false;
   },
 
   setPriorityAssessment(id: string, assessment: PriorityAssessment): DisputeCase | undefined {

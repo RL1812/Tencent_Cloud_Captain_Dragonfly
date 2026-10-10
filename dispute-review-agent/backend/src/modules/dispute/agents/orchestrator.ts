@@ -15,7 +15,9 @@ import { runEvidenceValidationAgent } from './evidence-validation-agent';
 import { runJudge } from './judge';
 import { runPrioritizationAgent } from './prioritization-agent';
 import { runRiderAdvocate } from './rider-advocate';
-import { validateInput } from './shared';
+import { disputeId, validateInput } from './shared';
+import { disputeType } from './checklist';
+import { precedentStore } from '../precedents';
 
 const ReviewState = Annotation.Root({
   input: Annotation<AgentInput>(),
@@ -46,7 +48,12 @@ export const disputeReviewGraph = new StateGraph(ReviewState)
     driver: await runDriverAdvocate(state.input),
   }))
   .addNode('judge', async (state) => ({
-    ruling: await runJudge(state.input, state.rider, state.driver),
+    ruling: await runJudge(
+      state.input,
+      state.rider,
+      state.driver,
+      precedentStore.select(disputeType(state.input), disputeId(state.input))
+    ),
   }))
   .addNode('confidence_escalation', (state) => ({
     escalation: runEscalationAgent(state.ruling),

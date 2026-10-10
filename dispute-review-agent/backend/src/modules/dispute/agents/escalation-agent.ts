@@ -3,8 +3,8 @@ import type { EscalationDecision, JudgeReview } from './contracts';
 /** Below this Judge confidence, the case must be decided by a human reviewer. */
 export const ESCALATION_THRESHOLD = 60;
 
-export function runEscalationAgent(
-  review: JudgeReview,
+export function runEscalationAgent<T extends Pick<JudgeReview, 'mode' | 'recommendation' | 'confidenceScore'>>(
+  review: T,
   threshold = ESCALATION_THRESHOLD
 ): EscalationDecision {
   const triggers: string[] = [];

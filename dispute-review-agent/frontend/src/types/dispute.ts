@@ -88,10 +88,20 @@ export interface AIReview {
   sourceRefs?: string[];
   missingEvidence?: string[];
   advocateSubmissions?: { rider: AdvocateSubmission; driver: AdvocateSubmission };
+  checklist?: ChecklistAnswer[];
+  precedentsUsed?: string[];
   priorityAssessment?: PriorityAssessment;
   evidenceValidation?: EvidenceValidation;
   escalation?: Escalation;
   workflowStatus?: 'auto_resolved' | 'human_intervention_required';
+}
+
+export interface ChecklistAnswer {
+  id: string;
+  item: string;
+  finding: string;
+  conflict: boolean;
+  sourceRefs: string[];
 }
 
 export interface PriorityAssessment {
@@ -126,6 +136,29 @@ export interface Escalation {
 export interface HumanOverride {
   recommendation: Recommendation;
   reason: string;
+  decidedAt: string;
+  decidedBy?: string;
+  useAsPrecedent: boolean;
+}
+
+export interface HumanDecisionInput {
+  recommendation: Recommendation;
+  reason: string;
+  decidedBy?: string;
+  useAsPrecedent: boolean;
+}
+
+/** A human decision the AI Judge can use to calibrate similar cases. */
+export interface Precedent {
+  caseNumber: string;
+  type: DisputeType;
+  title: string;
+  facts: string;
+  aiRecommendation?: Recommendation;
+  aiConfidence?: number;
+  humanRecommendation: Recommendation;
+  reason: string;
+  decidedBy?: string;
   decidedAt: string;
 }
 

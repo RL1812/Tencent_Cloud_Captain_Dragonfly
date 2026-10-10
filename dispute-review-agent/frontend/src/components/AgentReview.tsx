@@ -5,10 +5,25 @@
  */
 
 import { useState } from 'react';
-import { AlertTriangle, Bot, BrainCircuit, Gavel, Gauge, Link2, ListChecks, UserCheck } from 'lucide-react';
+import {
+  AlertTriangle,
+  BookMarked,
+  Bot,
+  BrainCircuit,
+  Gavel,
+  Gauge,
+  Link2,
+  ListChecks,
+  Loader2,
+  Pencil,
+  Undo2,
+  UserCheck,
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -29,6 +44,7 @@ import type {
   AdvocateSubmission,
   AIReview,
   DisputeCase,
+  HumanDecisionInput,
   Recommendation,
 } from '@/types/dispute';
 
@@ -352,6 +368,166 @@ export function HumanDecisionCard({ c }: { c: DisputeCase }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// --- Full human review: decide, revise, or withdraw at any time ---
+export function HumanDecisionPanel({
+  c,
+  pending,
+  onSubmit,
+  onWithdraw,
+}: {
+  c: DisputeCase;
+  pending?: boolean;
+  onSubmit: (decision: HumanDecisionInput) => Promise<unknown>;
+  onWithdraw: () => void;
+}) {
+  const existing = c.humanOverride;
+  const escalated = !existing && !!c.escalation?.needsHuman;
+  const [editing, setEditing] = useState(escalated);
+  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [recommendation, setRecommendation] = useState<Recommendation>(existing?.recommendation ?? 'driver');
+  const [reason, setReason] = useState(existing?.reason ?? '');
+  const [decidedBy, setDecidedBy] = useState(existing?.decidedBy ?? '');
+  const [useAsPrecedent, setUseAsPrecedent] = useState(existing?.useAsPrecedent ?? true);
+
+  async function submit() {
+    await onSubmit({
+      recommendation,
+      reason: reason.trim(),
+      decidedBy: decidedBy.trim() || undefined,
+      useAsPrecedent,
+    });
+    setEditing(false);
+  }
+
+  return (
+    <Card className={cn('mb-6', escalated ? 'border-amber-300' : existing ? 'border-primary/40' : 'border-dashed')}>
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className={cn('text-base flex items-center gap-2', escalated && 'text-amber-800')}>
+            <UserCheck className="w-4 h-4" />
+            {existing ? 'Human decision' : escalated ? 'Escalated to a human reviewer' : 'Human review'}
+            {existing?.useAsPrecedent && (
+              <Badge variant="secondary" className="font-normal">
+                <BookMarked className="w-3 h-3 mr-1" /> Used as precedent
+              </Badge>
+            )}
+          </CardTitle>
+          {!editing && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
+                {existing && <Pencil className="w-3.5 h-3.5 mr-1.5" />}
+                {existing ? 'Revise' : 'Decide'}
+              </Button>
+              {existing && (confirmWithdraw ? (
+                <>
+                  <Button size="sm" variant="destructive" disabled={pending} onClick={onWithdraw}>Confirm withdraw</Button>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmWithdraw(false)}>Cancel</Button>
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" onClick={() => setConfirmWithdraw(true)}>
+                  <Undo2 className="w-3.5 h-3.5 mr-1.5" /> Withdraw
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        {editing ? (
+          <>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <Label>Decision</Label>
+                <Select value={recommendation} onValueChange={(value) => setRecommendation(value as Recommendation)}>
+                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {overrideChoices.map((value) => <SelectItem key={value} value={value}>{recommendationLabels[value]}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="decided-by">Reviewer (optional)</Label>
+                <Input id="decided-by" className="mt-1.5" value={decidedBy} onChange={(event) => setDecidedBy(event.target.value)} />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="decision-reason">Reason (required)</Label>
+              <Textarea id="decision-reason" className="mt-1.5" rows={3} value={reason} onChange={(event) => setReason(event.target.value)} />
+            </div>
+            <div className="flex items-start gap-2">
+              <Checkbox id="use-as-precedent" checked={useAsPrecedent} onCheckedChange={(value) => setUseAsPrecedent(value === true)} />
+              <Label htmlFor="use-as-precedent" className="font-normal">
+                Use this decision to calibrate the AI Judge on similar disputes
+              </Label>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" disabled={pending || !reason.trim()} onClick={submit}>
+                {pending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />} Submit decision
+              </Button>
+              <Button size="sm" variant="ghost" disabled={pending} onClick={() => setEditing(false)}>Cancel</Button>
+            </div>
+          </>
+        ) : existing ? (
+          <>
+            <p><span className="text-muted-foreground">Final outcome: </span><strong>{recommendationLabels[existing.recommendation]}</strong></p>
+            <p><span className="text-muted-foreground">Reason: </span>{existing.reason}</p>
+            <p className="text-muted-foreground">{existing.decidedBy ? `${existing.decidedBy} · ` : ''}{formatDateTime(existing.decidedAt)}</p>
+            {c.learningFeedback && (
+              <div className="flex items-start gap-2 rounded-md bg-muted/60 p-3">
+                <BrainCircuit className="mt-0.5 h-4 w-4 text-primary" />
+                <p><strong>Learning Feedback Agent · {c.learningFeedback.status}</strong><br />{c.learningFeedback.message}</p>
+              </div>
+            )}
+            {confirmWithdraw && <p className="text-amber-700">Withdrawing removes its precedent and restores the status implied by the AI review.</p>}
+          </>
+        ) : (
+          <p className="text-muted-foreground">
+            {c.escalation?.reason || 'A reviewer can decide this case at any time. A human decision overrides the AI result.'}
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function JudgeChecklist({ review }: { review: AIReview }) {
+  const items = review.checklist ?? [];
+  if (items.length === 0) return null;
+  const conflicts = items.filter((item) => item.conflict).length;
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base flex items-center gap-2"><ListChecks className="w-4 h-4" /> Judge checklist</CardTitle>
+          <Badge variant="outline" className={conflicts ? 'border-amber-300 text-amber-700' : 'border-green-200 text-green-700'}>
+            {conflicts ? `${conflicts} source conflict${conflicts > 1 ? 's' : ''}` : 'No source conflicts'}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {items.map((item) => (
+          <div key={item.id} className={cn('rounded-md border p-3 text-sm', item.conflict && 'border-amber-300 bg-amber-50/60')}>
+            <p className="font-medium"><span className="font-mono text-muted-foreground mr-1.5">{item.id}</span>{item.item}</p>
+            <p className="mt-1">{item.finding}</p>
+            <SourceRefs refs={item.sourceRefs} />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function PrecedentsUsed({ review }: { review: AIReview }) {
+  const used = review.precedentsUsed ?? [];
+  if (used.length === 0) return null;
+  return (
+    <div className="mb-4 flex gap-2 rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+      <BookMarked className="w-4 h-4 flex-shrink-0 mt-0.5" />
+      <p>The Judge used these same-type human precedents to calibrate its standards: <span className="font-mono text-foreground">{used.join(', ')}</span>. They are not evidence in this case.</p>
+    </div>
   );
 }
 

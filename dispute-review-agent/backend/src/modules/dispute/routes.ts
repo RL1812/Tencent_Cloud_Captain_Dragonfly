@@ -12,6 +12,7 @@ import { runPrioritizationAgent } from './agents/prioritization-agent';
 import { sampleDatasetSchema } from './agents/dataset';
 import { datasetToCreateDTO } from './import-dataset';
 import { EVIDENCE_URL_PREFIX } from './uploads';
+import { precedentStore } from './precedents';
 import type { CreateDisputeDTO } from './types';
 
 export const disputeRouter: Router = Router();
@@ -101,6 +102,19 @@ const createDisputeSchema = z.object({
 // Routes
 // ============================================
 
+/** Human decisions the AI Judge can use as same-type precedents. */
+disputeRouter.get('/precedents', async (_req: Request, res: Response) => {
+  res.json({ data: precedentStore.list() });
+});
+
+/** Stop using a human decision as a precedent. */
+disputeRouter.delete('/precedents/:caseNumber', async (req: Request, res: Response) => {
+  const caseNumber = String(req.params.caseNumber);
+  if (!precedentStore.remove(caseNumber)) throw new AppError(404, 'Precedent not found');
+  disputeStore.unmarkPrecedent(caseNumber);
+  res.status(204).end();
+});
+
 /**
  * GET /api/disputes/stats — Dashboard statistics
  */
@@ -160,7 +174,9 @@ disputeRouter.post('/:id/review', async (req: Request, res: Response) => {
     throw new AppError(404, 'Case not found');
   }
 
-  // Mark as under review
+  // Preserve the previous status if execution itself fails (for example, a
+  // human-decided case must not be reopened by a failed retry).
+  const previousStatus = dispute.status;
   disputeStore.setStatus(id, 'under_review');
 
   try {
@@ -170,8 +186,7 @@ disputeRouter.post('/:id/review', async (req: Request, res: Response) => {
     const updated = disputeStore.updateReview(id, review);
     res.json({ data: updated });
   } catch (error) {
-    // Revert status on failure
-    disputeStore.setStatus(id, 'pending');
+    disputeStore.setStatus(id, previousStatus);
     const message =
       error instanceof Error ? error.message : 'AI review failed. Please try again.';
     throw new AppError(500, message);
@@ -183,17 +198,27 @@ disputeRouter.post('/:id/review', async (req: Request, res: Response) => {
  */
 const overrideSchema = z.object({
   recommendation: z.enum(['driver', 'passenger', 'shared', 'inconclusive']),
-  reason: z.string(),
+  reason: z.string().trim().min(1, 'Please give a reason for the decision').max(2000),
+  decidedBy: z.string().trim().max(100).optional().transform((value) => value || undefined),
+  useAsPrecedent: z.boolean().default(true),
 });
 
 disputeRouter.post('/:id/override', async (req: Request, res: Response) => {
   const id = String(req.params.id);
-  const { recommendation, reason } = overrideSchema.parse(req.body);
-  let updated = disputeStore.override(id, recommendation, reason);
+  let updated = disputeStore.override(id, overrideSchema.parse(req.body));
   if (!updated) {
     throw new AppError(404, 'Case not found');
   }
   const feedback = await runLearningFeedbackAgent(updated);
   updated = disputeStore.setLearningFeedback(id, feedback) ?? updated;
+  res.json({ data: updated });
+});
+
+/** Withdraw a human decision and its learning records. */
+disputeRouter.delete('/:id/override', async (req: Request, res: Response) => {
+  const updated = disputeStore.clearOverride(String(req.params.id));
+  if (!updated) {
+    throw new AppError(404, 'Case not found');
+  }
   res.json({ data: updated });
 });

@@ -90,10 +90,23 @@ export interface AIReview {
   sourceRefs?: string[];
   missingEvidence?: string[];
   advocateSubmissions?: { rider: AdvocateSubmission; driver: AdvocateSubmission };
+  /** The Judge's answer to each required check (see agents/checklist.ts) */
+  checklist?: ChecklistAnswer[];
+  /** Case numbers of the human precedents shown to the Judge */
+  precedentsUsed?: string[];
   priorityAssessment?: PriorityAssessment;
   evidenceValidation?: EvidenceValidation;
   escalation?: Escalation;
   workflowStatus?: 'auto_resolved' | 'human_intervention_required';
+}
+
+export interface ChecklistAnswer {
+  id: string;
+  item: string;
+  finding: string;
+  /** True when the sources disagree on this point */
+  conflict: boolean;
+  sourceRefs: string[];
 }
 
 export interface PriorityAssessment {
@@ -129,6 +142,9 @@ export interface HumanOverride {
   recommendation: Recommendation;
   reason: string;
   decidedAt: string;
+  decidedBy?: string;
+  /** Kept as a precedent the AI Judge learns from */
+  useAsPrecedent: boolean;
 }
 
 export interface LearningFeedback {

@@ -7,8 +7,9 @@ import type {
   DisputeCase,
   CreateDisputeDTO,
   DashboardStats,
+  HumanDecisionInput,
   NewEvidence,
-  Recommendation,
+  Precedent,
 } from '../types/dispute';
 
 export interface UploadedFile {
@@ -61,14 +62,23 @@ export const disputeApi = {
       .post<{ data: DisputeCase; existing: boolean }>('/disputes/import-dataset', dataset)
       .then((r) => ({ case: r.data.data, existing: r.data.existing })),
 
-  override: (id: string, recommendation: Recommendation, reason: string) =>
+  override: (id: string, decision: HumanDecisionInput) =>
     apiClient
-      .post<{ data: DisputeCase }>(
-        `/disputes/${id}/override`,
-        { recommendation, reason },
-        { timeout: 180000 }
-      )
+      .post<{ data: DisputeCase }>(`/disputes/${id}/override`, decision, { timeout: 180000 })
       .then((r) => r.data.data),
+
+  clearOverride: (id: string) =>
+    apiClient
+      .delete<{ data: DisputeCase }>(`/disputes/${id}/override`)
+      .then((r) => r.data.data),
+
+  getPrecedents: () =>
+    apiClient
+      .get<{ data: Precedent[] }>('/disputes/precedents')
+      .then((r) => r.data.data),
+
+  deletePrecedent: (caseNumber: string) =>
+    apiClient.delete(`/disputes/precedents/${encodeURIComponent(caseNumber)}`),
 
   // Two advocates and a Judge, each possibly retried on another model: allow several minutes
   review: (id: string) =>

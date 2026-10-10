@@ -27,3 +27,9 @@ prisma/migrations/
 
 # Human decisions kept as precedents (PRECEDENTS_FILE)
 data/
+
+# Local TypeScript cache and credentials
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
