@@ -90,35 +90,53 @@ export interface AIReview {
   sourceRefs?: string[];
   missingEvidence?: string[];
   advocateSubmissions?: { rider: AdvocateSubmission; driver: AdvocateSubmission };
-  /** The Judge's answer to each required check (see agents/checklist.ts) */
-  checklist?: ChecklistAnswer[];
-  /** Case numbers of the human precedents shown to the Judge */
-  precedentsUsed?: string[];
+  priorityAssessment?: PriorityAssessment;
+  evidenceValidation?: EvidenceValidation;
+  escalation?: Escalation;
+  workflowStatus?: 'auto_resolved' | 'human_intervention_required';
 }
 
-export interface ChecklistAnswer {
-  id: string;
-  item: string;
-  finding: string;
-  /** True when the sources disagree on this point */
-  conflict: boolean;
-  sourceRefs: string[];
+export interface PriorityAssessment {
+  agent: 'prioritization_agent';
+  priority: DisputePriority;
+  score: number;
+  reasons: string[];
+  targetResponseMinutes: number;
+  assessedAt: string;
+}
+
+export interface EvidenceValidation {
+  agent: 'evidence_validation_agent';
+  status: 'ready' | 'limited';
+  evidenceItemCount: number;
+  checks: string[];
+  warnings: string[];
+  validatedAt: string;
 }
 
 /** Set when the Judge is not confident enough and a human should decide. */
 export interface Escalation {
+  agent?: 'escalation_agent';
   needsHuman: boolean;
   reason: string;
+  triggers?: string[];
+  confidenceThreshold?: number;
+  evaluatedAt?: string;
 }
 
-/** A human reviewer's decision; it overrides the Judge and survives re-reviews. */
+/** A human reviewer's decision, overriding the Judge. */
 export interface HumanOverride {
   recommendation: Recommendation;
   reason: string;
   decidedAt: string;
-  decidedBy?: string;
-  /** Kept as a precedent the AI Judge learns from */
-  useAsPrecedent: boolean;
+}
+
+export interface LearningFeedback {
+  agent: 'learning_feedback_agent';
+  status: 'indexed' | 'skipped' | 'failed';
+  message: string;
+  documentId?: string;
+  recordedAt: string;
 }
 
 export interface DisputeCase {
@@ -137,6 +155,8 @@ export interface DisputeCase {
   review?: AIReview;
   escalation?: Escalation;
   humanOverride?: HumanOverride;
+  priorityAssessment?: PriorityAssessment;
+  learningFeedback?: LearningFeedback;
   /** Original sample dataset, when the case was imported from one */
   dataset?: SampleDataset;
 }

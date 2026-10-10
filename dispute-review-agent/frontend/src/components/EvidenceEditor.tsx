@@ -209,11 +209,11 @@ export function EvidenceForm({
           rows={3}
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Paste a chat log, GPS points, payment details or a written description"
+          placeholder="Paste chat messages, GPS data, payment details, or a written statement"
         />
       </div>
       <div>
-        <Label>Attachment (photo, PDF, etc., optional)</Label>
+        <Label>Attachment (photo, PDF, etc.; optional)</Label>
         <input
           ref={fileInput}
           type="file"

@@ -21,11 +21,11 @@ export const typeLabels: Record<DisputeType, string> = {
 export const evidencePartyLabels: Record<EvidenceParty, string> = {
   driver: 'Driver',
   rider: 'Rider',
-  platform: 'Platform',
+  platform: 'Platform record',
 };
 
 export const evidenceKindLabels: Record<EvidenceKind, string> = {
-  text: 'Note',
+  text: 'Text statement',
   chat: 'Chat log',
   gps: 'GPS data',
   payment: 'Payment record',
@@ -48,7 +48,7 @@ export const statusLabels: Record<DisputeStatus, string> = {
 export const recommendationLabels: Record<Recommendation, string> = {
   driver: 'Driver upheld',
   passenger: 'Rider upheld',
-  shared: 'Shared responsibility',
+  shared: 'Shared outcome',
   inconclusive: 'Inconclusive',
 };
 

@@ -3,7 +3,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { BookMarked, LayoutDashboard, FilePlus, Scale, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FilePlus, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -11,9 +11,8 @@ interface LayoutProps {
 }
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/submit', label: 'Submit case', icon: FilePlus },
-  { to: '/precedents', label: 'Precedents', icon: BookMarked },
+  { to: '/', label: 'Case dashboard', icon: LayoutDashboard },
+  { to: '/submit', label: 'Submit a case', icon: FilePlus },
 ];
 
 export function Layout({ children }: LayoutProps) {
@@ -25,16 +24,13 @@ export function Layout({ children }: LayoutProps) {
       <aside className="w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col">
         {/* Logo */}
         <div className="p-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-sidebar-primary/20">
-              <Scale className="w-5 h-5 text-sidebar-primary" />
-            </div>
+          <div className="flex items-center gap-2.5 border-l-4 border-sidebar-primary pl-3">
             <div>
-              <div className="font-bold text-sm text-sidebar-foreground">
-                Dispute Review Agent
+              <div className="text-sm font-bold text-sidebar-foreground">
+                Dispute Review
               </div>
-              <div className="text-xs text-sidebar-foreground/50">
-                AI ruling system
+              <div className="mt-1 text-xs font-medium text-sidebar-foreground/55">
+                AI resolution workspace
               </div>
             </div>
           </div>
@@ -69,7 +65,7 @@ export function Layout({ children }: LayoutProps) {
         <div className="p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-2 text-xs text-sidebar-foreground/50">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>AI review system v1.0</span>
+            <span>Human-supervised AI · v1.0</span>
           </div>
         </div>
       </aside>

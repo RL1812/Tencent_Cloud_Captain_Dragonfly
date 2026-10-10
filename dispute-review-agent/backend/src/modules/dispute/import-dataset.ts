@@ -24,13 +24,13 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
     if (e.content.trim()) evidence.push(e);
   };
 
-  add({ party: 'rider', kind: 'chat', title: 'Rider messages and calls', content: chatLines('rider') });
-  add({ party: 'driver', kind: 'chat', title: 'Driver messages and calls', content: chatLines('driver') });
+  add({ party: 'rider', kind: 'chat', title: 'Rider chat and call log', content: chatLines('rider') });
+  add({ party: 'driver', kind: 'chat', title: 'Driver chat and call log', content: chatLines('driver') });
   add({ party: 'platform', kind: 'chat', title: 'System notifications', content: chatLines('system') });
   add({
     party: 'platform',
     kind: 'gps',
-    title: `GPS track (${data.gps_telemetry.length} points)`,
+    title: `GPS trace (${data.gps_telemetry.length} points)`,
     content: data.gps_telemetry
       .map((p) => `[${clock(p.timestamp)}] ${p.lat}, ${p.lng} | ${p.speed_kmh} km/h | ${p.status}`)
       .join('\n'),
@@ -49,8 +49,8 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
     kind: 'text',
     title: 'Cancellation policy',
     content:
-      `Free wait ${p.free_wait_time_min} min; cancellation fee after the wait ${p.cancellation_fee_after_wait}; ` +
-      `no-show threshold ${p.no_show_threshold_min} min; fee goes to: ${p.fee_goes_to}`,
+      `Free wait: ${p.free_wait_time_min} minutes; cancellation fee after wait: ${p.cancellation_fee_after_wait}; ` +
+      `no-show threshold: ${p.no_show_threshold_min} minutes; fee recipient: ${p.fee_goes_to}`,
   });
 
   // "Honda HR-V (SGP 4521 M)" -> model + plate
@@ -65,7 +65,7 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
       name: data.driver_profile.name,
       id: data.driver_profile.driver_id,
       rating: data.driver_profile.avg_rating,
-      statement: '(No driver statement in the dataset)',
+      statement: '(The dataset does not include a separate driver statement.)',
     },
     passenger: {
       name: data.rider_profile.name,

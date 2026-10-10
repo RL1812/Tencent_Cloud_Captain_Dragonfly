@@ -1,29 +1,14 @@
 /**
  * AgentReview — shows how the three agents handled a case:
  * Rider Advocate and Driver Advocate each present a case, then the Judge rules.
- * Also the human judge's panel (decide / revise / withdraw at any time), the Judge's
- * required checklist and the human precedents it was shown.
+ * Also the human-escalation panel and the human decision card.
  */
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  AlertTriangle,
-  BookMarked,
-  Bot,
-  Gavel,
-  Link2,
-  ListChecks,
-  Loader2,
-  Pencil,
-  Undo2,
-  UserCheck,
-} from 'lucide-react';
+import { AlertTriangle, Bot, BrainCircuit, Gavel, Gauge, Link2, ListChecks, UserCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -44,8 +29,6 @@ import type {
   AdvocateSubmission,
   AIReview,
   DisputeCase,
-  HumanDecisionInput,
-  HumanOverride,
   Recommendation,
 } from '@/types/dispute';
 
@@ -105,7 +88,7 @@ function AdvocateCard({
           </CardTitle>
           {failed ? (
             <Badge variant="outline" className="border-amber-300 text-amber-700">
-              Not generated
+              Unavailable
             </Badge>
           ) : (
             <span className={cn('text-sm font-semibold', confidenceColor(a.confidenceScore))}>
@@ -171,7 +154,7 @@ function AdvocateCard({
             )}
 
             {a.missingEvidence.length > 0 && (
-              <Section title="Missing evidence / open questions">
+              <Section title="Missing evidence / uncertainties">
                 <BulletList items={a.missingEvidence} />
               </Section>
             )}
@@ -190,15 +173,60 @@ export function AgentTranscript({ review }: { review: AIReview }) {
     <div className="mb-6">
       <h2 className="text-xl font-bold mb-1">Multi-agent review</h2>
       <p className="text-sm text-muted-foreground mb-4">
-        Step 1: the Rider and Driver Advocates each build their case from the evidence (in parallel) → Step 2: the Judge weighs both and rules
+        Prioritization → parallel rider and driver advocacy → Judge decision → confidence-based escalation
       </p>
+      {review.priorityAssessment && (
+        <Card className="mb-4 border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <Gauge className="mt-0.5 h-4 w-4 text-primary" />
+              <div>
+                <p className="text-sm font-semibold">Prioritization Agent</p>
+                <p className="text-sm text-muted-foreground">
+                  {review.priorityAssessment.reasons.join(' ')}
+                </p>
+              </div>
+            </div>
+            <Badge className="w-fit bg-primary text-primary-foreground">
+              {review.priorityAssessment.priority.toUpperCase()} · {review.priorityAssessment.targetResponseMinutes} min SLA
+            </Badge>
+          </CardContent>
+        </Card>
+      )}
+      {review.evidenceValidation && (
+        <Card className="mb-4">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <ListChecks className="mt-0.5 h-4 w-4 text-primary" />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold">Evidence Validation Agent</p>
+                  <Badge variant="outline">
+                    {review.evidenceValidation.status} · {review.evidenceValidation.evidenceItemCount} records
+                  </Badge>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {review.evidenceValidation.checks.join(' ')}
+                </p>
+                {review.evidenceValidation.warnings.length > 0 && (
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-700">
+                    {review.evidenceValidation.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <AdvocateCard title="Rider Advocate" tone="rider" a={sub.rider} />
         <AdvocateCard title="Driver Advocate" tone="driver" a={sub.driver} />
       </div>
       <div className="flex items-center gap-2 mt-4 text-sm font-medium">
         <Gavel className="w-4 h-4" />
-        The Judge's ruling is in the AI Review Report below
+        The Judge's decision appears in the AI review report below.
       </div>
     </div>
   );
@@ -211,303 +239,119 @@ export function FallbackNotice({ review }: { review: AIReview }) {
     <div className="mb-4 flex gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-sm">
       <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
       <div>
-        <p className="font-medium text-amber-800">The AI review could not be completed</p>
+        <p className="font-medium text-amber-800">AI review could not be completed</p>
         <p className="text-amber-700 mt-0.5">
-          The model was unavailable or its output failed validation. The result below is a placeholder, not a judgement on the case. The case stays pending; click "Re-run review" to try again.
+          The model was unavailable or its output failed validation. This fallback is not a decision; the case remains pending and can be retried.
         </p>
       </div>
     </div>
   );
 }
 
-// --- Human judge: decide, revise or withdraw at any time ---
+// --- Escalation: a human decides ---
 const overrideChoices: Recommendation[] = ['driver', 'passenger', 'shared', 'inconclusive'];
 
-function DecisionForm({
-  initial,
+export function EscalationPanel({
+  reason,
   pending,
   onSubmit,
-  onCancel,
 }: {
-  initial?: HumanOverride;
+  reason: string;
   pending?: boolean;
-  onSubmit: (decision: HumanDecisionInput) => Promise<unknown>;
-  onCancel?: () => void;
+  onSubmit: (recommendation: Recommendation, reason: string) => void;
 }) {
-  const [recommendation, setRecommendation] = useState<Recommendation>(initial?.recommendation ?? 'driver');
-  const [reason, setReason] = useState(initial?.reason ?? '');
-  const [decidedBy, setDecidedBy] = useState(initial?.decidedBy ?? '');
-  const [useAsPrecedent, setUseAsPrecedent] = useState(initial?.useAsPrecedent ?? true);
-
-  async function submit() {
-    try {
-      await onSubmit({ recommendation, reason: reason.trim(), decidedBy: decidedBy.trim() || undefined, useAsPrecedent });
-    } catch {
-      // The error is shown as a toast; keep the form open with what was typed
-    }
-  }
-
+  const [recommendation, setRecommendation] = useState<Recommendation>('driver');
+  const [note, setNote] = useState('');
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div>
-          <Label>Decision</Label>
-          <Select value={recommendation} onValueChange={(v) => setRecommendation(v as Recommendation)}>
-            <SelectTrigger className="mt-1.5">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {overrideChoices.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {recommendationLabels[r]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <Card className="mb-6 border-amber-300">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2 text-amber-800">
+          <UserCheck className="w-4 h-4" />
+          Escalated to a human reviewer
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">{reason}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <Label>Human decision</Label>
+            <Select
+              value={recommendation}
+              onValueChange={(v) => setRecommendation(v as Recommendation)}
+            >
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {overrideChoices.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {recommendationLabels[r]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Decision rationale</Label>
+            <Textarea
+              className="mt-1.5"
+              rows={2}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Explain the decision. It will be indexed for future knowledge retrieval."
+            />
+          </div>
         </div>
-        <div className="sm:col-span-2">
-          <Label htmlFor="decided-by">Reviewer (optional)</Label>
-          <Input
-            id="decided-by"
-            className="mt-1.5"
-            value={decidedBy}
-            onChange={(e) => setDecidedBy(e.target.value)}
-            placeholder="e.g. Jane Lim"
-          />
-        </div>
-      </div>
-      <div>
-        <Label htmlFor="decision-reason">Reason (required)</Label>
-        <Textarea
-          id="decision-reason"
-          className="mt-1.5"
-          rows={3}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="Explain the basis: which records you relied on and how the policy applies. If kept as a precedent, the AI Judge learns from this reason."
-        />
-      </div>
-      <div className="flex items-start gap-2">
-        <Checkbox
-          id="use-as-precedent"
-          className="mt-0.5"
-          checked={useAsPrecedent}
-          onCheckedChange={(v) => setUseAsPrecedent(v === true)}
-        />
-        <Label htmlFor="use-as-precedent" className="font-normal leading-snug">
-          Use as a precedent for the AI Judge
-          <span className="block text-xs text-muted-foreground mt-0.5">
-            When reviewing similar disputes, the AI Judge will refer to this decision and reason (to calibrate its standards only, never as evidence)
-          </span>
-        </Label>
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" disabled={pending || !reason.trim()} onClick={submit}>
-          {pending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-          Submit decision
+        <Button size="sm" disabled={pending} onClick={() => onSubmit(recommendation, note)}>
+          Submit human decision
         </Button>
-        {onCancel && (
-          <Button size="sm" variant="ghost" disabled={pending} onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
-export function HumanDecisionPanel({
-  c,
-  pending,
-  onSubmit,
-  onWithdraw,
-}: {
-  c: DisputeCase;
-  pending?: boolean;
-  onSubmit: (decision: HumanDecisionInput) => Promise<unknown>;
-  onWithdraw: () => void;
-}) {
+// --- A human has decided ---
+export function HumanDecisionCard({ c }: { c: DisputeCase }) {
   const h = c.humanOverride;
-  const escalated = !h && !!c.escalation?.needsHuman;
-  const [editing, setEditing] = useState(escalated);
-  const [confirmWithdraw, setConfirmWithdraw] = useState(false);
-  const ai = c.review && c.review.mode !== 'fallback' ? c.review : undefined;
-
-  const form = (
-    <DecisionForm
-      initial={h}
-      pending={pending}
-      onSubmit={async (d) => {
-        await onSubmit(d);
-        setEditing(false);
-      }}
-      onCancel={escalated ? undefined : () => setEditing(false)}
-    />
-  );
-
-  // Already decided by a human
-  if (h) {
-    return (
-      <Card className="mb-6 border-primary/40">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <CardTitle className="text-base flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-primary" />
-              Human decision
-              {h.useAsPrecedent && (
-                <Badge variant="secondary" className="font-normal">
-                  <BookMarked className="w-3 h-3 mr-1" />
-                  Used as precedent
-                </Badge>
-              )}
-            </CardTitle>
-            {!editing && (
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-                  <Pencil className="w-3.5 h-3.5 mr-1.5" />
-                  Revise
-                </Button>
-                {confirmWithdraw ? (
-                  <>
-                    <Button size="sm" variant="destructive" disabled={pending} onClick={onWithdraw}>
-                      Confirm withdraw
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setConfirmWithdraw(false)}>
-                      Cancel
-                    </Button>
-                  </>
-                ) : (
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmWithdraw(true)}>
-                    <Undo2 className="w-3.5 h-3.5 mr-1.5" />
-                    Withdraw
-                  </Button>
-                )}
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {editing ? (
-            form
-          ) : (
-            <>
-              <p>
-                <span className="text-muted-foreground">Final decision: </span>
-                <span className="font-semibold">{recommendationLabels[h.recommendation]}</span>
-                <span className="text-muted-foreground ml-3">
-                  {h.decidedBy ? `${h.decidedBy} · ` : ''}
-                  {formatDateTime(h.decidedAt)}
-                </span>
-              </p>
-              <p>
-                <span className="text-muted-foreground">Reason: </span>
-                {h.reason}
-              </p>
-              {ai && (
-                <p className="text-muted-foreground">
-                  AI ruling: {recommendationLabels[ai.recommendation]} (confidence {ai.confidenceScore}%)
-                  {ai.recommendation !== h.recommendation && ' — overturned by the reviewer'}
-                </p>
-              )}
-              {confirmWithdraw && (
-                <p className="text-amber-700">Withdrawing returns the case to the AI result (or to pending if the AI never reviewed it) and removes its precedent.</p>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-    );
-  }
-
+  if (!h) return null;
+  const ai = c.review;
   return (
-    <Card className={cn('mb-6', escalated ? 'border-amber-300' : 'border-dashed')}>
+    <Card className="mb-6 border-primary/40">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className={cn('text-base flex items-center gap-2', escalated && 'text-amber-800')}>
-            <UserCheck className="w-4 h-4" />
-            {escalated ? 'Escalated to a human reviewer' : 'Human review'}
-          </CardTitle>
-          {!editing && (
-            <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
-              Decide
-            </Button>
-          )}
-        </div>
+        <CardTitle className="text-base flex items-center gap-2">
+          <UserCheck className="w-4 h-4 text-primary" />
+          Human decision
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <p className="text-sm text-muted-foreground">
-          {escalated
-            ? c.escalation!.reason
-            : 'A reviewer can decide this case at any time, whether or not the AI has reviewed it. A human decision overrides the AI, and later AI reviews will not overturn it.'}
+      <CardContent className="space-y-2 text-sm">
+        <p>
+          <span className="text-muted-foreground">Final outcome: </span>
+          <span className="font-semibold">{recommendationLabels[h.recommendation]}</span>
+          <span className="text-muted-foreground ml-3">{formatDateTime(h.decidedAt)}</span>
         </p>
-        {editing && form}
-      </CardContent>
-    </Card>
-  );
-}
-
-// --- The Judge's required checklist ---
-export function JudgeChecklist({ review }: { review: AIReview }) {
-  const items = review.checklist ?? [];
-  if (items.length === 0) return null;
-  const conflicts = items.filter((i) => i.conflict).length;
-  return (
-    <Card className="mb-4">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ListChecks className="w-4 h-4 text-muted-foreground" />
-            Judge checklist
-          </CardTitle>
-          {conflicts > 0 ? (
-            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">
-              {conflicts} source conflict{conflicts > 1 ? 's' : ''}
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="border-green-200 bg-green-50 text-green-700">
-              No source conflicts
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {items.map((i) => (
-          <div
-            key={i.id}
-            className={cn('rounded-md border p-3 text-sm', i.conflict && 'border-amber-300 bg-amber-50/60')}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <p className="font-medium">
-                <span className="text-muted-foreground font-mono mr-1.5">{i.id}</span>
-                {i.item}
-              </p>
-              {i.conflict && <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />}
+        {h.reason && (
+          <p>
+            <span className="text-muted-foreground">Rationale: </span>
+            {h.reason}
+          </p>
+        )}
+        {ai && (
+          <p className="text-muted-foreground">
+            Original AI decision: {recommendationLabels[ai.recommendation]} (confidence {ai.confidenceScore}%)
+            {ai.recommendation !== h.recommendation && ' — overridden by the reviewer'}
+          </p>
+        )}
+        {c.learningFeedback && (
+          <div className="flex items-start gap-2 rounded-md bg-muted/60 p-3">
+            <BrainCircuit className="mt-0.5 h-4 w-4 text-primary" />
+            <div>
+              <p className="font-medium">Learning Feedback Agent · {c.learningFeedback.status}</p>
+              <p className="text-muted-foreground">{c.learningFeedback.message}</p>
             </div>
-            <p className="mt-1 leading-relaxed">{i.finding}</p>
-            <SourceRefs refs={i.sourceRefs} />
           </div>
-        ))}
+        )}
       </CardContent>
     </Card>
-  );
-}
-
-// --- Which human precedents the Judge was shown ---
-export function PrecedentsUsed({ review }: { review: AIReview }) {
-  const used = review.precedentsUsed ?? [];
-  if (used.length === 0) return null;
-  return (
-    <div className="mb-4 flex gap-2 rounded-md border bg-muted/40 p-3 text-sm">
-      <BookMarked className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-      <p className="text-muted-foreground">
-        The Judge was shown {used.length} human precedent{used.length > 1 ? 's' : ''} for this dispute type:{' '}
-        <span className="font-mono text-foreground">{used.join(', ')}</span>
-        . Precedents only calibrate its standards; they are not evidence in this case.
-        <Link to="/precedents" className="ml-1 text-primary hover:underline">
-          View precedents
-        </Link>
-      </p>
-    </div>
   );
 }
 
@@ -519,7 +363,7 @@ export function JudgeSources({ review }: { review: AIReview }) {
   return (
     <Card className="mb-4">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Cited sources and missing evidence</CardTitle>
+        <CardTitle className="text-base">Sources and evidence gaps</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {refs.length > 0 && (

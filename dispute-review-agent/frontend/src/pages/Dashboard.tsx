@@ -70,9 +70,9 @@ export default function Dashboard() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Dispute Review Dashboard</h1>
+          <h1 className="text-2xl font-bold">Dispute review dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Driver–rider dispute review — case overview and AI rulings
+            Ryde Resolve — prioritized, evidence-grounded reviews with human oversight
           </p>
         </div>
         <Link to="/submit">
@@ -125,13 +125,13 @@ export default function Dashboard() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Case no.</TableHead>
+                  <TableHead>Case number</TableHead>
                   <TableHead className="min-w-[200px]">Title</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -164,7 +164,7 @@ export default function Dashboard() {
                           variant="outline"
                           className="ml-1.5 border-amber-300 bg-amber-50 text-amber-700"
                         >
-                          Needs human
+                          Human review
                         </Badge>
                       )}
                     </TableCell>

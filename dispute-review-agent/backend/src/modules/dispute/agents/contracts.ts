@@ -5,6 +5,37 @@ import type { SampleDataset } from './dataset';
 export type AgentInput = DisputeCase | SampleDataset;
 export type AdvocateRole = 'rider_advocate' | 'driver_advocate';
 export type ExecutionMode = 'llm' | 'fallback';
+export type ReviewWorkflowStatus = 'auto_resolved' | 'human_intervention_required';
+
+export const priorityAssessmentSchema = z.object({
+  agent: z.literal('prioritization_agent'),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']),
+  score: z.number().int().min(0).max(100),
+  reasons: z.array(z.string().min(1)).min(1),
+  targetResponseMinutes: z.number().int().positive(),
+  assessedAt: z.string().datetime(),
+});
+export type PriorityAssessment = z.infer<typeof priorityAssessmentSchema>;
+
+export const evidenceValidationSchema = z.object({
+  agent: z.literal('evidence_validation_agent'),
+  status: z.enum(['ready', 'limited']),
+  evidenceItemCount: z.number().int().nonnegative(),
+  checks: z.array(z.string().min(1)).min(1),
+  warnings: z.array(z.string().min(1)),
+  validatedAt: z.string().datetime(),
+});
+export type EvidenceValidation = z.infer<typeof evidenceValidationSchema>;
+
+export const escalationDecisionSchema = z.object({
+  agent: z.literal('escalation_agent'),
+  needsHuman: z.boolean(),
+  reason: z.string(),
+  triggers: z.array(z.string()),
+  confidenceThreshold: z.number().int().min(0).max(100),
+  evaluatedAt: z.string().datetime(),
+});
+export type EscalationDecision = z.infer<typeof escalationDecisionSchema>;
 
 // Models sometimes answer 72.5 or a probability like 0.85; store a whole 0-100 score
 const confidenceScoreSchema = z
@@ -68,4 +99,8 @@ export type JudgeReview = AIReview & {
 };
 export type MultiAgentReview = JudgeReview & {
   advocateSubmissions: { rider: AdvocateCase; driver: AdvocateCase };
+  priorityAssessment: PriorityAssessment;
+  evidenceValidation: EvidenceValidation;
+  escalation: EscalationDecision;
+  workflowStatus: ReviewWorkflowStatus;
 };

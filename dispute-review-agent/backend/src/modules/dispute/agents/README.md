@@ -16,8 +16,10 @@ datasets need their own schemas. Legacy case categories remain available.
     const driver = await runDriverAdvocate(dataset);
     const ruling = await runJudge(dataset, rider, driver);
 
-Normally call reviewDispute(dataset), which runs both advocates concurrently and
-then calls the Judge. It returns the ruling and advocateSubmissions.rider/driver.
+Normally call reviewDispute(dataset). A compiled LangGraph runs prioritization,
+evidence validation, both advocates in parallel, the Judge, and confidence-based
+routing. It returns the ruling, advocateSubmissions.rider/driver,
+priorityAssessment, evidenceValidation, escalation, and workflowStatus.
 All model calls go through src/lib/llm-chat.ts: Google Gemini (free tier) when
 GEMINI_API_KEY is set — gemini-3.8-flash first, then GEMINI_FALLBACK_MODELS —
 otherwise Tencent TokenHub (hy3).
@@ -49,39 +51,22 @@ Singapore sample. There is no payment execution.
 
 Unavailable or invalid model output returns mode=fallback and confidenceScore=0.
 If either advocate fails, the Judge call is skipped and the result is inconclusive.
-No fallback chooses a winner based on ratings or statement length. For stored
-cases: a failed review (mode=fallback) leaves the case pending for a retry; an
-inconclusive ruling or Judge confidence below 60 escalates the case to a human
-(status under_review, escalation.needsHuman); otherwise the case is resolved.
-A human decision (POST /api/disputes/:id/override) closes the case at any
-time; a later AI review does not reopen it.
+No fallback chooses a winner based on ratings or statement length. The
+deterministic Prioritization Agent assigns an explainable queue level and target
+response time without consuming an LLM call. For stored cases, a failed review
+(mode=fallback) leaves the case pending for a retry. The Escalation Agent sends
+an inconclusive ruling or Judge confidence below 60 to a human (status
+under_review, escalation.needsHuman); otherwise the case is resolved. A human
+decision (POST /api/disputes/:id/override) closes the case. The Learning Feedback
+Agent then indexes that reviewed outcome when PostgreSQL and Ollama are available.
+This is RAG feedback, not model fine-tuning. If the knowledge base is offline,
+the human decision still saves and its feedback status is reported as skipped.
 Earlier reviews, escalations and human decisions are never shown to the agents.
 
 Model output is checked before use: confidenceScore is rounded to an integer
-0-100. Each dataset policy argument must cite at least one
-/cancellation_policy/ field (it may also cite the facts it applies to); one
-that cites none is dropped and logged, not fatal. Rejections are logged with
-the reason (context "Agents").
-
-## Judge checklist
-
-checklist.ts lists the points the Judge must answer, by ID, for each dispute
-type plus two common ones (statement-vs-record and timestamp conflicts). The
-Judge returns checklist[{id, finding, conflict, sourceRefs}]. The review is
-rejected (fallback) if an item is missing, a citation does not exist, or a
-conflict is flagged while missingEvidence is empty. Answers are stored with the
-item text and shown in the report.
-
-## Human precedents
-
-A human decision (POST /api/disputes/:id/override with useAsPrecedent, default
-true) is saved by precedents.ts to PRECEDENTS_FILE: case facts, AI and human
-rulings, reason. The orchestrator gives the Judge (not the advocates) up to
-PRECEDENT_EXAMPLES precedents of the same dispute type, newest first, excluding
-the case under review. They calibrate standards only; they are not evidence
-and cannot be cited. The review records precedentsUsed.
-GET /api/disputes/precedents lists them; DELETE /api/disputes/precedents/:caseNumber
-removes one. DELETE /api/disputes/:id/override withdraws a decision and its precedent.
+0-100, and each dataset policy argument must cite at least one
+/cancellation_policy/ field (it may also cite the facts it applies to).
+Rejections are logged with the reason (context "Agents").
 
 ## Dataset interpretation
 
@@ -96,9 +81,8 @@ GPS, chat or policy service is queried. The dataset has no separate driver state
 
 ## Framework choice
 
-The implementation currently uses ordinary async TypeScript orchestration.
-It can be wrapped in LangGraph nodes: input -> parallel advocates -> Judge -> output.
-LangGraph can retain the existing chat client. LangChain is optional for
-model wrappers or future retrieval tools. No framework migration or model
-fine-tuning is implemented; human escalation is handled by the case store and
-learning from human decisions by precedents in the Judge's prompt (see above).
+The implementation uses LangGraph for explicit branching and parallel agent
+execution while retaining the existing chat client. The graph ends with either
+auto_resolved or human_intervention_required. Human review remains an API
+boundary rather than a long-held HTTP request: POST /override records the human
+decision and invokes learning feedback. LangChain model wrappers are not required.

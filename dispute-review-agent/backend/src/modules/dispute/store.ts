@@ -9,12 +9,10 @@ import type {
   EvidenceItem,
   NewEvidence,
   Recommendation,
+  PriorityAssessment,
+  LearningFeedback,
 } from './types';
 import type { SampleDataset } from './agents/dataset';
-import { precedentFromCase, precedentStore } from './precedents';
-
-/** Below this Judge confidence, the case goes to a human reviewer. */
-export const ESCALATION_THRESHOLD = 60;
 
 let counter = 1000;
 let evidenceCounter = 0;
@@ -34,7 +32,7 @@ const cases: DisputeCase[] = [
     status: 'resolved',
     priority: 'high',
     type: 'safety_accident',
-    title: '司机报告乘客未系安全带且言语威胁',
+    title: 'Driver reports seatbelt refusal and a verbal threat',
     createdAt: '2024-12-10T09:30:00Z',
     updatedAt: '2024-12-10T14:20:00Z',
     driver: {
@@ -109,7 +107,7 @@ const cases: DisputeCase[] = [
     status: 'pending',
     priority: 'urgent',
     type: 'route_deviation',
-    title: '乘客投诉司机绕路导致车费大幅增加',
+    title: 'Rider disputes a fare increase caused by route deviation',
     createdAt: '2024-12-15T08:00:00Z',
     updatedAt: '2024-12-15T08:00:00Z',
     driver: {
@@ -148,7 +146,7 @@ const cases: DisputeCase[] = [
     status: 'pending',
     priority: 'medium',
     type: 'no_show_charge',
-    title: '乘客投诉司机态度恶劣并中途拒载',
+    title: 'Rider reports rude conduct and refusal to continue the trip',
     createdAt: '2024-12-16T14:00:00Z',
     updatedAt: '2024-12-16T14:00:00Z',
     driver: {
@@ -196,8 +194,10 @@ function generateCaseNumber(): string {
 
 export const disputeStore = {
   getAll(): DisputeCase[] {
+    const priorityRank = { urgent: 4, high: 3, medium: 2, low: 1 };
     return [...cases].sort(
       (a, b) =>
+        priorityRank[b.priority] - priorityRank[a.priority] ||
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
   },
@@ -242,74 +242,58 @@ export const disputeStore = {
     const c = cases.find((c) => c.id === id);
     if (!c || !review) return undefined;
     c.review = review;
-    c.updatedAt = new Date().toISOString();
-    // A human decision stands: a new AI review is kept for reference, it does not reopen the case
-    if (c.humanOverride) {
-      c.status = 'resolved';
-      return c;
+    c.humanOverride = undefined;
+    c.learningFeedback = undefined;
+    if (review.priorityAssessment) {
+      c.priorityAssessment = review.priorityAssessment;
+      c.priority = review.priorityAssessment.priority;
     }
     const failed = review.mode === 'fallback';
-    const lowConfidence =
-      review.recommendation === 'inconclusive' ||
-      review.confidenceScore < ESCALATION_THRESHOLD;
     if (failed) {
       // Review could not run: stay open for a retry, nothing to escalate
-      c.escalation = { needsHuman: false, reason: 'The AI review could not be completed; it can be re-run' };
-      c.status = 'pending';
-    } else if (lowConfidence) {
-      c.escalation = {
-        needsHuman: true,
-        reason:
-          review.recommendation === 'inconclusive'
-            ? 'The Judge could not decide; a human reviewer must decide'
-            : `Judge confidence ${review.confidenceScore}% is below the ${ESCALATION_THRESHOLD}% threshold; a human reviewer must decide`,
+      c.escalation = review.escalation ?? {
+        needsHuman: false,
+        reason: 'AI review did not complete. Retry the review.',
       };
+      c.status = 'pending';
+    } else if (review.escalation?.needsHuman) {
+      c.escalation = review.escalation;
       c.status = 'under_review';
     } else {
-      c.escalation = { needsHuman: false, reason: '' };
+      c.escalation = review.escalation ?? { needsHuman: false, reason: '' };
       c.status = 'resolved';
     }
+    c.updatedAt = new Date().toISOString();
     return c;
   },
 
-  /**
-   * A human reviewer decides the case — at any time, with or without an AI review,
-   * escalated or not, and again to revise an earlier decision. Closes the case and,
-   * when useAsPrecedent is set, keeps the decision for the AI Judge to learn from.
-   */
-  override(
-    id: string,
-    decision: { recommendation: Recommendation; reason: string; decidedBy?: string; useAsPrecedent: boolean }
-  ): DisputeCase | undefined {
+  /** A human reviewer's decision; closes the case and records it for later learning. */
+  override(id: string, recommendation: Recommendation, reason: string): DisputeCase | undefined {
     const c = cases.find((c) => c.id === id);
     if (!c) return undefined;
     const now = new Date().toISOString();
-    c.humanOverride = { ...decision, decidedAt: now };
-    c.escalation = { needsHuman: false, reason: 'Decided by a human reviewer' };
+    c.humanOverride = { recommendation, reason, decidedAt: now };
+    c.escalation = { needsHuman: false, reason: 'Resolved by a human reviewer.' };
     c.status = 'resolved';
     c.updatedAt = now;
-    if (decision.useAsPrecedent) precedentStore.upsert(precedentFromCase(c, c.humanOverride));
-    else precedentStore.remove(c.caseNumber);
     return c;
   },
 
-  /** Reverts a human decision; the case goes back to the AI result (or pending). */
-  clearOverride(id: string): DisputeCase | undefined {
-    const c = cases.find((c) => c.id === id);
-    if (!c?.humanOverride) return c;
-    c.humanOverride = undefined;
-    precedentStore.remove(c.caseNumber);
-    if (c.review) return this.updateReview(id, c.review);
-    c.escalation = undefined;
-    c.status = 'pending';
+  setPriorityAssessment(id: string, assessment: PriorityAssessment): DisputeCase | undefined {
+    const c = cases.find((item) => item.id === id);
+    if (!c) return undefined;
+    c.priorityAssessment = assessment;
+    c.priority = assessment.priority;
     c.updatedAt = new Date().toISOString();
     return c;
   },
 
-  /** A precedent was deleted from the library: the case's decision no longer teaches the AI. */
-  unmarkPrecedent(caseNumber: string): void {
-    const c = cases.find((c) => c.caseNumber === caseNumber);
-    if (c?.humanOverride) c.humanOverride.useAsPrecedent = false;
+  setLearningFeedback(id: string, feedback: LearningFeedback): DisputeCase | undefined {
+    const c = cases.find((item) => item.id === id);
+    if (!c) return undefined;
+    c.learningFeedback = feedback;
+    c.updatedAt = new Date().toISOString();
+    return c;
   },
 
   setStatus(id: string, status: DisputeCase['status']): DisputeCase | undefined {

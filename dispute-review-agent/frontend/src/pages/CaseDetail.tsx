@@ -30,11 +30,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   AgentTranscript,
+  EscalationPanel,
   FallbackNotice,
-  HumanDecisionPanel,
-  JudgeChecklist,
+  HumanDecisionCard,
   JudgeSources,
-  PrecedentsUsed,
 } from '@/components/AgentReview';
 import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
@@ -53,7 +52,7 @@ import {
   formatFare,
 } from '@/lib/dispute-utils';
 import { cn } from '@/lib/utils';
-import type { DisputeCase, AIReview, HumanDecisionInput, NewEvidence, Party } from '@/types/dispute';
+import type { DisputeCase, AIReview, NewEvidence, Party, Recommendation } from '@/types/dispute';
 
 // --- Party Card ---
 function PartyCard({ title, party, icon: Icon }: { title: string; party: Party; icon: React.ElementType }) {
@@ -100,7 +99,7 @@ function AIReviewContent({ review }: { review: AIReview }) {
       {/* Section Header */}
       <div className="flex items-center gap-2 pt-2">
         <Scale className="w-5 h-5 text-primary" />
-        <h2 className="text-xl font-bold">AI Review Report</h2>
+        <h2 className="text-xl font-bold">AI review report</h2>
         <span className="text-sm text-muted-foreground ml-auto">
           Reviewed: {formatDateTime(review.reviewedAt)}
         </span>
@@ -110,7 +109,7 @@ function AIReviewContent({ review }: { review: AIReview }) {
       <div className={cn('rounded-lg border p-6', recColor.bg)}>
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">AI ruling</p>
+            <p className="text-sm text-muted-foreground mb-1">AI recommendation</p>
             <p className={cn('text-2xl font-bold', recColor.text)}>
               {recommendationLabels[review.recommendation]}
             </p>
@@ -136,7 +135,7 @@ function AIReviewContent({ review }: { review: AIReview }) {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-muted-foreground" />
-            <CardTitle className="text-base">Summary</CardTitle>
+            <CardTitle className="text-base">Case summary</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -172,7 +171,7 @@ function AIReviewContent({ review }: { review: AIReview }) {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <Car className="w-4 h-4 text-blue-500" />
-              <CardTitle className="text-base text-blue-700">Driver assessment</CardTitle>
+              <CardTitle className="text-base text-blue-700">Driver analysis</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -183,7 +182,7 @@ function AIReviewContent({ review }: { review: AIReview }) {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <User className="w-4 h-4 text-green-500" />
-              <CardTitle className="text-base text-green-700">Rider assessment</CardTitle>
+              <CardTitle className="text-base text-green-700">Rider analysis</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -205,10 +204,6 @@ function AIReviewContent({ review }: { review: AIReview }) {
         </CardContent>
       </Card>
 
-      <PrecedentsUsed review={review} />
-
-      <JudgeChecklist review={review} />
-
       <JudgeSources review={review} />
 
       {/* Policy References */}
@@ -216,7 +211,7 @@ function AIReviewContent({ review }: { review: AIReview }) {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-muted-foreground" />
-            <CardTitle className="text-base">Policies applied</CardTitle>
+            <CardTitle className="text-base">Applicable policy</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -235,7 +230,7 @@ function AIReviewContent({ review }: { review: AIReview }) {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Gavel className="w-4 h-4 text-muted-foreground" />
-            <CardTitle className="text-base">Reasoning</CardTitle>
+            <CardTitle className="text-base">Decision reasoning</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -248,7 +243,7 @@ function AIReviewContent({ review }: { review: AIReview }) {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-muted-foreground" />
-            <CardTitle className="text-base">Confidence reasoning</CardTitle>
+            <CardTitle className="text-base">Confidence rationale</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -302,8 +297,8 @@ export default function CaseDetail() {
     mutationFn: () => disputeApi.review(id!),
     onSuccess: (updated) => {
       refreshCase();
-      if (updated.review?.mode === 'fallback') toast.warning('The AI review could not be completed; try again later');
-      else toast.success('AI review complete');
+      if (updated.review?.mode === 'fallback') toast.warning('AI review could not be completed. Try again later.');
+      else toast.success('AI review completed.');
     },
     onError: (error) => {
       // The status was set to "under review" while the agents ran
@@ -316,27 +311,17 @@ export default function CaseDetail() {
     mutationFn: (evidence: NewEvidence) => disputeApi.addEvidence(id!, evidence),
     onSuccess: () => {
       refreshCase();
-      toast.success('Evidence added');
+      toast.success('Evidence added.');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const overrideMutation = useMutation({
-    mutationFn: (decision: HumanDecisionInput) => disputeApi.override(id!, decision),
-    onSuccess: (updated) => {
-      refreshCase();
-      queryClient.invalidateQueries({ queryKey: ['precedents'] });
-      toast.success(updated.humanOverride?.useAsPrecedent ? 'Decision recorded and added to precedents' : 'Decision recorded');
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
-
-  const withdrawMutation = useMutation({
-    mutationFn: () => disputeApi.clearOverride(id!),
+    mutationFn: ({ rec, reason }: { rec: Recommendation; reason: string }) =>
+      disputeApi.override(id!, rec, reason),
     onSuccess: () => {
       refreshCase();
-      queryClient.invalidateQueries({ queryKey: ['precedents'] });
-      toast.success('Decision withdrawn');
+      toast.success('Human decision recorded.');
     },
     onError: (error) => toast.error(getErrorMessage(error)),
   });
@@ -401,7 +386,7 @@ export default function CaseDetail() {
       {/* Trip Details */}
       <Card className="mb-4">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Trip</CardTitle>
+          <CardTitle className="text-base">Trip information</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -412,7 +397,7 @@ export default function CaseDetail() {
             <TripDetail icon={DollarSign} label="Fare" value={formatFare(c.trip.fare, c.trip.currency)} />
             <TripDetail icon={RouteIcon} label="Distance" value={`${c.trip.distance} km`} />
             <TripDetail icon={Car} label="Vehicle" value={c.trip.vehicleModel} />
-            <TripDetail icon={Car} label="Plate" value={c.trip.plateNumber} />
+            <TripDetail icon={Car} label="Licence plate" value={c.trip.plateNumber} />
           </div>
         </CardContent>
       </Card>
@@ -433,7 +418,7 @@ export default function CaseDetail() {
 
       {c.dataset != null && (
         <p className="text-xs text-muted-foreground mb-4">
-          This case was imported from a dataset. The AI reviews the original dataset, so evidence added after import is not used.
+          This case was imported from a sample dataset. The AI reviews the original dataset; evidence added afterward is not included in that review.
         </p>
       )}
 
@@ -447,7 +432,7 @@ export default function CaseDetail() {
               onClick={() => reviewMutation.mutate()}
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
-              Re-run review
+              Run review again
             </Button>
           </div>
           <FallbackNotice review={c.review} />
@@ -455,16 +440,15 @@ export default function CaseDetail() {
         </>
       )}
 
-      {/* Human judge: available on every case; opens by itself when the AI escalates */}
-      {!reviewMutation.isPending && (
-        <HumanDecisionPanel
-          key={`${c.humanOverride?.decidedAt ?? 'none'}-${c.escalation?.needsHuman ?? false}`}
-          c={c}
-          pending={overrideMutation.isPending || withdrawMutation.isPending}
-          onSubmit={(decision) => overrideMutation.mutateAsync(decision)}
-          onWithdraw={() => withdrawMutation.mutate()}
+      {/* Human escalation / decision */}
+      {c.escalation?.needsHuman && !reviewMutation.isPending && (
+        <EscalationPanel
+          reason={c.escalation.reason}
+          pending={overrideMutation.isPending}
+          onSubmit={(rec, reason) => overrideMutation.mutate({ rec, reason })}
         />
       )}
+      <HumanDecisionCard c={c} />
 
       {/* AI Review Section */}
       {reviewMutation.isPending ? (
@@ -472,9 +456,9 @@ export default function CaseDetail() {
           <CardContent className="py-16">
             <div className="flex flex-col items-center">
               <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-              <p className="font-medium">The AI agents are reviewing the dispute</p>
+              <p className="font-medium">AI agents are reviewing this dispute</p>
               <p className="text-sm text-muted-foreground mt-1 max-w-md text-center">
-                The Rider and Driver Advocates are preparing their cases in parallel, then the Judge rules. This usually takes 1–3 minutes.
+                The rider and driver advocates are preparing parallel cases, followed by the Judge. This usually takes 1–3 minutes.
               </p>
             </div>
           </CardContent>
@@ -488,9 +472,9 @@ export default function CaseDetail() {
               <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
                 <Scale className="w-8 h-8 text-primary" />
               </div>
-              <p className="font-medium text-lg mb-1">This case has not been reviewed by the AI yet</p>
+              <p className="font-medium text-lg mb-1">This case has not been reviewed by AI</p>
               <p className="text-sm text-muted-foreground mb-5 max-w-md text-center">
-                Two advocate agents build each side's case from the evidence, then a Judge agent gives a ruling with a confidence score, citing the records it relied on.
+                The agents analyze both accounts, cross-check the evidence, apply platform policy, and provide a recommendation with a confidence score.
               </p>
               <Button size="lg" onClick={() => reviewMutation.mutate()}>
                 <Scale className="w-4 h-4 mr-2" />

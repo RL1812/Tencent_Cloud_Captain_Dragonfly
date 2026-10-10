@@ -28,7 +28,7 @@ export function DatasetImport() {
     onSuccess: ({ case: c, existing }) => {
       queryClient.invalidateQueries({ queryKey: ['disputes'] });
       queryClient.invalidateQueries({ queryKey: ['dispute-stats'] });
-      if (existing) toast.info(`${c.caseNumber} was already imported; opened the existing case`);
+      if (existing) toast.info(`${c.caseNumber} was already imported. Opening the existing case.`);
       else toast.success(`Imported ${c.caseNumber}`);
       navigate(`/cases/${c.id}`);
     },
@@ -40,7 +40,7 @@ export function DatasetImport() {
       const res = await fetch('/samples/disp-002.json');
       importMutation.mutate(await res.json());
     } catch {
-      toast.error('Could not load the sample dataset');
+      toast.error('Could not load the sample dataset.');
     }
   }
 
@@ -50,7 +50,7 @@ export function DatasetImport() {
     try {
       importMutation.mutate(extractJson(await file.text()));
     } catch {
-      toast.error('The file is not a valid JSON dataset');
+      toast.error('The file is not a valid JSON dataset.');
     }
     if (fileInput.current) fileInput.current.value = '';
   }
@@ -60,12 +60,12 @@ export function DatasetImport() {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Database className="w-4 h-4" />
-          Import a dataset
+          Import dataset
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Create a case straight from a dataset (GPS, chat logs, app events, cancellation policy) instead of filling in the form.
+          Create a case directly from a dataset containing GPS, chat, app events, and policy data.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" onClick={loadSample} disabled={importMutation.isPending}>
@@ -83,7 +83,7 @@ export function DatasetImport() {
             onClick={() => fileInput.current?.click()}
           >
             <Upload className="w-4 h-4 mr-1.5" />
-            Choose a dataset file (.json / .md)
+            Choose dataset file (.json / .md)
           </Button>
           <input
             ref={fileInput}

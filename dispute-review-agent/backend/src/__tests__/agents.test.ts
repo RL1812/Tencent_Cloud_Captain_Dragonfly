@@ -8,6 +8,9 @@ import { chatCompletion } from '../lib/llm-chat';
 import { sampleDatasetSchema } from '../modules/dispute/agents/dataset';
 import { runRiderAdvocate } from '../modules/dispute/agents/rider-advocate';
 import { reviewDispute } from '../modules/dispute/agents/orchestrator';
+import { runEscalationAgent } from '../modules/dispute/agents/escalation-agent';
+import { runEvidenceValidationAgent } from '../modules/dispute/agents/evidence-validation-agent';
+import { runPrioritizationAgent } from '../modules/dispute/agents/prioritization-agent';
 import { formatCaseContext, parseJsonObject, sourceIndex } from '../modules/dispute/agents/shared';
 import { judgeChecklist } from '../modules/dispute/agents/checklist';
 import { precedentStore } from '../modules/dispute/precedents';
@@ -126,6 +129,40 @@ test('both advocates receive full records and the Judge receives both validated 
   expect(judgeInput.driverAdvocateSubmission.agent).toBe('driver_advocate');
   expect(result.advocateSubmissions.rider.disputeId).toBe('DISP-002');
   expect(result.sourceRefs).toEqual(judge.sourceRefs);
+  expect(result.priorityAssessment).toMatchObject({
+    agent: 'prioritization_agent', priority: 'high',
+  });
+  expect(result.escalation).toMatchObject({
+    agent: 'escalation_agent', needsHuman: true, confidenceThreshold: 60,
+  });
+  expect(result.evidenceValidation).toMatchObject({
+    agent: 'evidence_validation_agent', status: 'ready',
+  });
+  expect(result.workflowStatus).toBe('human_intervention_required');
+});
+
+test('prioritization agent elevates safety cases without an LLM call', () => {
+  expect(runPrioritizationAgent(disputeStore.getById('case-001')!)).toMatchObject({
+    priority: 'urgent', score: 100, targetResponseMinutes: 15,
+  });
+});
+
+test('evidence validation agent reports limited legacy records without blocking them', () => {
+  const input = { ...disputeStore.getById('case-002')!, evidence: [] };
+  expect(runEvidenceValidationAgent(input)).toMatchObject({
+    status: 'limited', evidenceItemCount: 0,
+  });
+});
+
+test('escalation agent routes low-confidence Judge decisions to a human', () => {
+  const decision = runEscalationAgent({
+    ...judge, recommendation: 'inconclusive' as const,
+    disputeId: 'DISP-002', mode: 'llm', reviewedAt: new Date().toISOString(),
+  });
+  expect(decision.needsHuman).toBe(true);
+  expect(decision.triggers).toEqual(expect.arrayContaining([
+    expect.stringContaining('inconclusive'), expect.stringContaining('below'),
+  ]));
 });
 
 test('model failure produces no ratings-based ruling and skips the Judge call', async () => {

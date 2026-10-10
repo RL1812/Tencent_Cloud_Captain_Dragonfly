@@ -139,28 +139,28 @@
   --popover-foreground: oklch(0.145 0 0);
 
   /* === 主色调 === */
-  --primary: oklch(0.48 0.16 260);
-  --primary-foreground: oklch(0.985 0 0);
+  --primary: #df4268;
+  --primary-foreground: #ffffff;
 
   /* === 次要色 === */
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+  --secondary: #fff2f5;
+  --secondary-foreground: #5b2437;
 
   /* === 柔和色 === */
-  --muted: oklch(0.97 0.005 260);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted: #fff6f8;
+  --muted-foreground: #765765;
 
   /* === 强调色 === */
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: #fde8ee;
+  --accent-foreground: #8c2445;
 
   /* === 危险/错误色 === */
   --destructive: oklch(0.577 0.245 27.325);
 
   /* === 边框和输入框 === */
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: #f0d9e0;
+  --input: #ead1d9;
+  --ring: #df4268;
 
   /* === 功能颜色 (新增) === */
   --success: oklch(0.596 0.145 163.225);
@@ -177,25 +177,25 @@
   --theme-blue: oklch(0.546 0.192 262.881);
 
   /* === 图表颜色 === */
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  --chart-1: #df4268;
+  --chart-2: #f0718f;
+  --chart-3: #a92d51;
+  --chart-4: #ff9bad;
+  --chart-5: #74213d;
 
   /* === 侧边栏 === */
-  --sidebar: oklch(0.21 0.02 260);
-  --sidebar-foreground: oklch(0.90 0.01 260);
-  --sidebar-primary: oklch(0.55 0.20 260);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.28 0.02 260);
-  --sidebar-accent-foreground: oklch(0.92 0.01 260);
-  --sidebar-border: oklch(0.30 0.02 260);
-  --sidebar-ring: oklch(0.55 0.20 260);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #43202d;
+  --sidebar-primary: #df4268;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #fff0f4;
+  --sidebar-accent-foreground: #a92d51;
+  --sidebar-border: #f2dce3;
+  --sidebar-ring: #df4268;
 
   /* === Hero 区域 (新增) === */
-  --hero: oklch(0.205 0 0);
-  --hero-foreground: oklch(0.985 0 0);
+  --hero: #a92d51;
+  --hero-foreground: #ffffff;
 
   /* === 动画 Token === */
   --duration-fast: 150ms;
