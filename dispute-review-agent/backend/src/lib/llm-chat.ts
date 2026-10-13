@@ -1,7 +1,7 @@
 /**
  * Chat client for the dispute-review agents (OpenAI-compatible APIs).
  *
- * Provider order:
+ * Provider order (LLM_PROVIDER=gemini or tokenhub forces one):
  *   1. Google Gemini (free tier) when GEMINI_API_KEY is set — GEMINI_MODEL first,
  *      then each of GEMINI_FALLBACK_MODELS if a call fails (high demand, quota,
  *      retired model, stalled or too slow).
@@ -40,7 +40,7 @@ interface Provider {
 }
 
 function resolveProvider(): Provider | null {
-  if (env.GEMINI_API_KEY) {
+  if (env.GEMINI_API_KEY && env.LLM_PROVIDER !== 'tokenhub') {
     return {
       name: 'gemini',
       client: new OpenAI({
@@ -56,6 +56,7 @@ function resolveProvider(): Provider | null {
     };
   }
 
+  if (env.LLM_PROVIDER === 'gemini') return null;
   const isSandbox = process.env.X_IDE_AUTH_PROXY !== undefined;
   const apiKey = env.TOKENHUB_API_KEY || (isSandbox ? 'mock_api_key' : '');
   if (!apiKey) return null;

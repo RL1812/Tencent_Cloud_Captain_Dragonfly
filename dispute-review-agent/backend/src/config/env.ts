@@ -33,6 +33,8 @@ const envSchema = z.object({
   OCR_LANGS: z.string().default('eng+chi_sim'),
 
   // Dispute-review agents (Rider/Driver Advocate, Judge). Gemini is used when its key is set.
+  // auto = Gemini when GEMINI_API_KEY is set, otherwise TokenHub
+  LLM_PROVIDER: z.enum(['auto', 'gemini', 'tokenhub']).default('auto'),
   GEMINI_API_KEY: z.string().optional().transform((v) => v?.trim() || undefined),
   GEMINI_MODEL: z.string().default('gemini-3.8-flash'),
   // Tried in order when GEMINI_MODEL fails (high demand, quota, retired model)

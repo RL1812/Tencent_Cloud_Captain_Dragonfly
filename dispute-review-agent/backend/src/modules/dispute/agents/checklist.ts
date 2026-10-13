@@ -25,9 +25,11 @@ const BY_TYPE: Record<DisputeType, string[]> = {
     'Evidence of where the rider actually was',
   ],
   route_deviation: [
-    'Actual route compared with the recommended route',
-    'Fare and distance compared with what the trip normally costs',
-    'Whether the rider agreed to any route change',
+    'Actual route compared with the recommended route (distance, how far and where the GPS track left it)',
+    'Unexpected stops, and trip duration compared with the estimate',
+    'Final fare compared with the upfront estimate, and whether the fare breakdown (surge, promo code, components) is valid',
+    'Whether the rider requested or agreed to the route change, or another policy exemption (e.g. road closure, platform reroute) is supported by the record',
+    'Refund or adjustment owed under the supplied fare policy, with the calculation',
   ],
   property_damage: [
     'Evidence that the damage happened during this trip',

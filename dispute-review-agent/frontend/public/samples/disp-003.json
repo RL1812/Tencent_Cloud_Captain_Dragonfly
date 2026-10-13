@@ -1,0 +1,184 @@
+{
+  "dispute_ticket": {
+    "dispute_id": "DISP-003",
+    "trip_id": "TRIP-2026-10112",
+    "filed_by": "rider",
+    "dispute_type": "route_deviation",
+    "description": "The driver took a much longer route via the PIE and ECP instead of the CTE shown in the app. I asked him to go back to the CTE and he said OK but never did. The fare was $31.40 but the estimate was $19.00. I want a refund of the difference.",
+    "filed_at": "2026-09-20T22:05:00+08:00",
+    "status": "open"
+  },
+
+  "rider_profile": {
+    "rider_id": "R-5510",
+    "name": "Priya Nair",
+    "account_age_days": 1340,
+    "total_trips": 412,
+    "avg_rating": 4.8,
+    "dispute_history": {
+      "total_disputes": 1,
+      "upheld": 1,
+      "rejected": 0
+    },
+    "fraud_flags": 0,
+    "payment_method": "credit_card"
+  },
+
+  "driver_profile": {
+    "driver_id": "D-4471",
+    "name": "Tan Ah Kow",
+    "account_age_days": 160,
+    "total_trips": 588,
+    "avg_rating": 4.3,
+    "dispute_history": {
+      "total_disputes": 6,
+      "upheld_against": 4,
+      "rejected": 2
+    },
+    "fraud_flags": 1,
+    "fraud_flag_details": "flagged_for_route_deviation",
+    "vehicle": "Toyota Corolla Altis (SKD 8812 T)"
+  },
+
+  "trip_data": {
+    "trip_id": "TRIP-2026-10112",
+    "rider_id": "R-5510",
+    "driver_id": "D-4471",
+    "pickup_location": {
+      "name": "Toa Payoh Hub",
+      "lat": 1.3326,
+      "lng": 103.8473
+    },
+    "dropoff_location": {
+      "name": "Raffles Place MRT",
+      "lat": 1.2839,
+      "lng": 103.8515
+    },
+    "pickup_time": "2026-09-20T21:12:00+08:00",
+    "dropoff_time": "2026-09-20T21:51:00+08:00",
+    "estimated_distance_km": 9.8,
+    "estimated_duration_min": 18,
+    "actual_distance_km": 17.6,
+    "estimated_fare": 19.00,
+    "final_fare": 31.40,
+    "fare_breakdown": {
+      "base_fare": 3.90,
+      "distance_fare": 15.04,
+      "time_fare": 11.70,
+      "surge_multiplier": 1.0,
+      "booking_fee": 0.76,
+      "promo_code": null,
+      "promo_discount": 0.00,
+      "total": 31.40
+    }
+  },
+
+  "recommended_route": {
+    "summary": "CTE southbound to Raffles Place",
+    "distance_km": 9.8,
+    "duration_min": 18,
+    "waypoints": [
+      { "name": "Toa Payoh Hub", "lat": 1.3326, "lng": 103.8473 },
+      { "name": "CTE (Braddell)", "lat": 1.3300, "lng": 103.8440 },
+      { "name": "CTE (Novena)", "lat": 1.3180, "lng": 103.8430 },
+      { "name": "CTE (Cairnhill)", "lat": 1.3050, "lng": 103.8410 },
+      { "name": "CTE (Chinatown exit)", "lat": 1.2930, "lng": 103.8430 },
+      { "name": "Cross Street", "lat": 1.2860, "lng": 103.8490 },
+      { "name": "Raffles Place MRT", "lat": 1.2839, "lng": 103.8515 }
+    ]
+  },
+
+  "gps_telemetry": [
+    { "timestamp": "2026-09-20T21:12:00+08:00", "lat": 1.3326, "lng": 103.8473, "speed_kmh": 0, "status": "picked_up" },
+    { "timestamp": "2026-09-20T21:14:00+08:00", "lat": 1.3290, "lng": 103.8520, "speed_kmh": 30, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:16:00+08:00", "lat": 1.3245, "lng": 103.8580, "speed_kmh": 55, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:18:00+08:00", "lat": 1.3215, "lng": 103.8660, "speed_kmh": 70, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:20:00+08:00", "lat": 1.3190, "lng": 103.8750, "speed_kmh": 75, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:23:00+08:00", "lat": 1.3110, "lng": 103.8810, "speed_kmh": 60, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:26:00+08:00", "lat": 1.3020, "lng": 103.8850, "speed_kmh": 65, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:29:00+08:00", "lat": 1.2990, "lng": 103.8800, "speed_kmh": 50, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:31:00+08:00", "lat": 1.2985, "lng": 103.8790, "speed_kmh": 0, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:34:00+08:00", "lat": 1.2985, "lng": 103.8790, "speed_kmh": 0, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:37:00+08:00", "lat": 1.2930, "lng": 103.8720, "speed_kmh": 45, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:40:00+08:00", "lat": 1.2880, "lng": 103.8640, "speed_kmh": 40, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:44:00+08:00", "lat": 1.2810, "lng": 103.8590, "speed_kmh": 25, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:48:00+08:00", "lat": 1.2830, "lng": 103.8540, "speed_kmh": 15, "status": "in_trip" },
+    { "timestamp": "2026-09-20T21:51:00+08:00", "lat": 1.2839, "lng": 103.8515, "speed_kmh": 0, "status": "dropped_off" }
+  ],
+
+  "chat_logs": [
+    {
+      "timestamp": "2026-09-20T21:20:10+08:00",
+      "sender": "rider",
+      "type": "message",
+      "content": "Why are we not on the CTE?"
+    },
+    {
+      "timestamp": "2026-09-20T21:20:40+08:00",
+      "sender": "driver",
+      "type": "message",
+      "content": "CTE jam, PIE faster."
+    },
+    {
+      "timestamp": "2026-09-20T21:21:05+08:00",
+      "sender": "rider",
+      "type": "message",
+      "content": "The app shows the CTE is clear. Please go back to the CTE."
+    },
+    {
+      "timestamp": "2026-09-20T21:21:30+08:00",
+      "sender": "driver",
+      "type": "message",
+      "content": "Ok ok, after this exit."
+    },
+    {
+      "timestamp": "2026-09-20T21:51:10+08:00",
+      "sender": "system",
+      "type": "system",
+      "content": "Trip completed. Fare $31.40 charged to credit card."
+    }
+  ],
+
+  "app_events": [
+    {
+      "timestamp": "2026-09-20T21:05:00+08:00",
+      "event_type": "booking_confirmed",
+      "details": "Rider R-5510 booked trip TRIP-2026-10112 from Toa Payoh Hub to Raffles Place MRT. Upfront estimate $19.00 via CTE (9.8 km, 18 min)."
+    },
+    {
+      "timestamp": "2026-09-20T21:10:30+08:00",
+      "event_type": "driver_arrived",
+      "details": "Driver D-4471 arrived at pickup point."
+    },
+    {
+      "timestamp": "2026-09-20T21:12:00+08:00",
+      "event_type": "trip_started",
+      "details": "Rider on board. Navigation route: CTE southbound."
+    },
+    {
+      "timestamp": "2026-09-20T21:18:30+08:00",
+      "event_type": "route_deviation_detected",
+      "details": "Driver left recommended route (CTE). No traffic incident reported on CTE at this time."
+    },
+    {
+      "timestamp": "2026-09-20T21:19:00+08:00",
+      "event_type": "reroute_suggested",
+      "details": "Navigation suggested returning to the CTE via Bendemeer Road. Suggestion not followed."
+    },
+    {
+      "timestamp": "2026-09-20T21:51:00+08:00",
+      "event_type": "trip_completed",
+      "details": "Fare $31.40 charged to credit card. 65% above upfront estimate."
+    }
+  ],
+
+  "fare_policy": {
+    "deviation_tolerance_pct": 15,
+    "refund_basis": "If the metered distance exceeds the recommended route by more than the tolerance and no exemption applies, the rider is refunded the difference between the final fare and the upfront estimate.",
+    "exempt_reasons": [
+      "rider_requested_or_agreed_route_change",
+      "platform_suggested_reroute",
+      "verified_road_closure_or_incident"
+    ]
+  }
+}

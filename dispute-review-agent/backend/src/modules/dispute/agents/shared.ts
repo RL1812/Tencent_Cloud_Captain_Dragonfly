@@ -1,5 +1,6 @@
 import type { AgentInput, AdvocateCase } from './contracts';
-import { sampleDatasetSchema } from './dataset';
+import { isRouteDeviationDataset, policyPrefix, sampleDatasetSchema } from './dataset';
+import { analyzeRoute } from './route-analysis';
 
 export function validateInput(input: AgentInput): AgentInput {
   return 'dispute_ticket' in input ? sampleDatasetSchema.parse(input) : input;
@@ -16,7 +17,12 @@ function originalRecord(input: AgentInput): Record<string, unknown> {
   return Object.fromEntries(Object.entries(input).filter(([key]) => !PRIOR_DECISION_KEYS.has(key)));
 }
 
-/** Stable JSON-pointer paths into the original evidence, without prior rulings. */
+/** Measurements the system derives from the record, citable as /computed_route_analysis/... */
+function computedSections(input: AgentInput): Record<string, unknown> {
+  return isRouteDeviationDataset(input) ? { computed_route_analysis: analyzeRoute(input) } : {};
+}
+
+/** Stable JSON-pointer paths into the original evidence (plus computed checks), without prior rulings. */
 export function sourceIndex(input: AgentInput): Record<string, unknown> {
   const index: Record<string, unknown> = {};
   function visit(value: unknown, path: string): void {
@@ -27,7 +33,7 @@ export function sourceIndex(input: AgentInput): Record<string, unknown> {
       }
     }
   }
-  visit(originalRecord(input), '');
+  visit({ ...originalRecord(input), ...computedSections(input) }, '');
   return index;
 }
 
@@ -46,27 +52,31 @@ export function checkAdvocateSources(output: AdvocateCase, input: AgentInput): v
   ], input);
   if (output.disputeId !== disputeId(input)) throw new Error('Advocate case ID mismatch');
   // Each policy argument must rest on a supplied policy value; it may also cite the facts it applies to
-  if ('dispute_ticket' in input && output.policyArguments.some(
-    (item) => !item.sourceRefs.some((ref) => ref.startsWith('/cancellation_policy/'))
-  )) throw new Error('Policy arguments must cite the supplied cancellation policy');
+  const prefix = policyPrefix(input);
+  if (prefix && output.policyArguments.some(
+    (item) => !item.sourceRefs.some((ref) => ref.startsWith(prefix))
+  )) throw new Error(`Policy arguments must cite the supplied policy (${prefix})`);
 }
 
 /**
- * For datasets, a policy argument must rest on a supplied cancellation_policy field.
+ * For datasets, a policy argument must rest on a supplied policy field
+ * (cancellation_policy for no-shows, fare_policy for route deviations).
  * One that cites only facts is misfiled, not invented, so it is dropped rather than
  * failing the whole submission; invented citations still fail in assertSourceRefs.
  */
 export function groundedPolicyArguments<T extends { sourceRefs: string[] }>(
   args: T[], input: AgentInput
 ): { kept: T[]; dropped: number } {
-  if (!('dispute_ticket' in input)) return { kept: args, dropped: 0 };
-  const kept = args.filter((item) => item.sourceRefs.some((ref) => ref.startsWith('/cancellation_policy/')));
+  const prefix = policyPrefix(input);
+  if (!prefix) return { kept: args, dropped: 0 };
+  const kept = args.filter((item) => item.sourceRefs.some((ref) => ref.startsWith(prefix)));
   return { kept, dropped: args.length - kept.length };
 }
 
 export function formatCaseContext(input: AgentInput): string {
   return JSON.stringify({
     originalRecord: originalRecord(input),
+    ...computedSections(input),
     allowedSourceRefs: Object.keys(sourceIndex(input)),
   });
 }
@@ -97,6 +107,12 @@ For no-show disputes compare arrival, scheduled pickup, driver_wait_start, app t
 timer expiry and cancellation. Highlight conflicting timestamps and uncertainty over whether
 waiting starts at arrival, scheduled pickup, or timer start. Do not silently resolve ambiguity.
 Missing rider GPS or messages is not proof of absence. Sent notifications are not proof of reading.
+For route-deviation disputes compare the GPS track with recommended_route, and the final fare and
+fare_breakdown with the upfront estimate. computed_route_analysis holds measurements the system
+computed from this record (distance, off-route points, stops, duration, fare arithmetic); cite them as
+/computed_route_analysis/... and attribute them to the system. A driver's traffic or road-closure
+claim needs support in the record (app events, rider agreement in chat) before an exemption applies.
+Refund amounts must follow fare_policy.refund_basis.
 The supplied Singapore dataset uses SGD. Do not label its fee CNY.
 Return English analysis. Confidence is an assessment, not a calibrated probability.
 `;

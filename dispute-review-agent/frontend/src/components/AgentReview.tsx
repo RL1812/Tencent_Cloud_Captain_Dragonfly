@@ -10,13 +10,17 @@ import {
   BookMarked,
   Bot,
   BrainCircuit,
+  Car,
   Gavel,
   Gauge,
   Link2,
   ListChecks,
   Loader2,
+  MessageSquare,
   Pencil,
+  Receipt,
   Undo2,
+  User,
   UserCheck,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -36,8 +40,10 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   confidenceBarColor,
   confidenceColor,
+  formatAmount,
   formatDateTime,
   recommendationLabels,
+  resolutionActionLabels,
 } from '@/lib/dispute-utils';
 import { cn } from '@/lib/utils';
 import type {
@@ -558,3 +564,68 @@ export function JudgeSources({ review }: { review: AIReview }) {
 }
 
 export { confidenceBarColor };
+
+/** The concrete outcome: action, amount, recipient and how the amount was worked out. */
+export function ResolutionSummary({ review }: { review: AIReview }) {
+  const r = review.resolution;
+  if (!r) return null;
+  const movesMoney = r.action !== 'no_action';
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Receipt className="w-4 h-4 text-muted-foreground" /> Resolution
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="text-lg font-semibold">{resolutionActionLabels[r.action]}</span>
+          {movesMoney && (
+            <span className="text-lg font-semibold text-primary">
+              {formatAmount(r.amount, r.currency)} to the {r.recipient}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground leading-relaxed">{r.basis}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * The messages for the rider and the driver. They are only final when the AI
+ * ruling stands: escalated cases hold them, and a human decision supersedes them.
+ */
+export function PartyNoticesCard({ c }: { c: DisputeCase }) {
+  const notices = c.review?.partyNotices;
+  if (!notices) return null;
+  const state = c.humanOverride
+    ? { label: 'Superseded by the human decision — rewrite before sending', tone: 'bg-muted text-muted-foreground' }
+    : c.escalation?.needsHuman
+      ? { label: 'Draft — held until a human reviewer decides', tone: 'bg-amber-100 text-amber-800' }
+      : { label: 'Ready to send', tone: 'bg-green-100 text-green-800' };
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex flex-wrap items-center gap-2">
+          <MessageSquare className="w-4 h-4 text-muted-foreground" /> Messages to both parties
+          <Badge variant="secondary" className={cn('ml-auto font-normal', state.tone)}>{state.label}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="rounded-md border p-3">
+          <p className="text-xs font-medium text-green-700 mb-1.5 flex items-center gap-1.5">
+            <User className="w-3.5 h-3.5" /> To the rider · {c.passenger.name}
+          </p>
+          <p className="text-sm leading-relaxed whitespace-pre-line">{notices.rider}</p>
+        </div>
+        <div className="rounded-md border p-3">
+          <p className="text-xs font-medium text-blue-700 mb-1.5 flex items-center gap-1.5">
+            <Car className="w-3.5 h-3.5" /> To the driver · {c.driver.name}
+          </p>
+          <p className="text-sm leading-relaxed whitespace-pre-line">{notices.driver}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

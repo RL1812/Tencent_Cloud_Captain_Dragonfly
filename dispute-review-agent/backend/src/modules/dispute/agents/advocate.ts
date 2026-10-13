@@ -1,5 +1,6 @@
 import { chatCompletion } from '../../../lib/llm-chat';
 import { advocateOutputSchema, type AgentInput, type AdvocateCase, type AdvocateRole } from './contracts';
+import { isRouteDeviationDataset } from './dataset';
 import {
   checkAdvocateSources, disputeId, evidenceInstructions,
   formatCaseContext, groundedPolicyArguments, parseJsonObject, validateInput,
@@ -12,6 +13,10 @@ const logger = createLogger('Agents');
 export async function runAdvocate(input: AgentInput, agent: AdvocateRole): Promise<AdvocateCase> {
   const record = validateInput(input);
   const party = agent === 'rider_advocate' ? 'rider' : 'driver';
+  // Example citations that exist in this kind of record
+  const policyExample = isRouteDeviationDataset(record)
+    ? '["/fare_policy/deviation_tolerance_pct","/computed_route_analysis/deviation_pct"]'
+    : '["/cancellation_policy/free_wait_time_min","/trip_data/driver_wait_start"]';
   const prompt = `You are the ${party} advocate. Gather relevant material from the provided
 record and present the strongest honest case for the ${party}, acknowledging adverse evidence.
 ${evidenceInstructions}
@@ -21,7 +26,7 @@ Return only this JSON shape:
   "claims": ["allegations or claims, with attribution"],
   "supportingEvidence": [{"evidence":"fact or allegation","relevance":"why it matters","sourceRefs":["/path"]}],
   "adverseEvidence": [{"evidence":"adverse fact","relevance":"why it weakens the case","sourceRefs":["/path"]}],
-  "policyArguments": [{"argument":"application of supplied policy","sourceRefs":["/cancellation_policy/free_wait_time_min","/trip_data/driver_wait_start"]}],
+  "policyArguments": [{"argument":"application of supplied policy","sourceRefs":${policyExample}}],
   "missingEvidence": ["missing facts or conflicting timestamps"],
   "requestedOutcome": "specific requested remedy, including SGD amount when supported",
   "confidenceScore": "integer from 0 to 100"

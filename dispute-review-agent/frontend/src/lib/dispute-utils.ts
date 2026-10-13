@@ -9,6 +9,7 @@ import type {
   EvidenceKind,
   EvidenceParty,
   Recommendation,
+  ResolutionAction,
 } from '../types/dispute';
 
 export const typeLabels: Record<DisputeType, string> = {
@@ -110,6 +111,18 @@ export function confidenceBarColor(score: number): string {
   if (score >= 70) return 'bg-green-500';
   if (score >= 40) return 'bg-amber-500';
   return 'bg-red-500';
+}
+
+export const resolutionActionLabels: Record<ResolutionAction, string> = {
+  full_refund: 'Full refund',
+  partial_refund: 'Partial refund',
+  compensation: 'Compensation',
+  no_action: 'No action — charge stands',
+};
+
+/** Money with its currency symbol and two decimals, e.g. S$12.40. */
+export function formatAmount(amount: number, currency?: 'CNY' | 'SGD'): string {
+  return `${currency === 'SGD' ? 'S$' : '¥'}${amount.toFixed(2)}`;
 }
 
 /** Fare with its currency symbol (S$ for SGD, ¥ otherwise). */

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { sampleDatasetSchema, type SampleDataset } from '../modules/dispute/agents/dataset';
+import { noShowDatasetSchema, type NoShowDataset } from '../modules/dispute/agents/dataset';
 import { assertSourceRefs, formatCaseContext } from '../modules/dispute/agents/shared';
 
 const folder = path.join(__dirname, 'fixtures/no-show');
@@ -10,7 +10,7 @@ const manifest: {
     expected_refund_amount: number | null; evidence_refs: string[];
   }>;
 } = JSON.parse(fs.readFileSync(path.join(folder, 'expected-results.json'), 'utf8'));
-const load = (id: string): SampleDataset => JSON.parse(
+const load = (id: string): NoShowDataset => JSON.parse(
   fs.readFileSync(path.join(folder, id + '.json'), 'utf8')
 );
 const seconds = (end: string, start: string) => (Date.parse(end) - Date.parse(start)) / 1000;
@@ -20,10 +20,10 @@ test('exactly ten unique complete input records with separate answer keys', () =
   expect(files.sort()).toEqual(manifest.cases.map((c) => c.file).sort());
   expect(files).toHaveLength(10);
   for (const select of [
-    (d: SampleDataset) => d.dispute_ticket.dispute_id,
-    (d: SampleDataset) => d.trip_data.trip_id,
-    (d: SampleDataset) => d.rider_profile.rider_id,
-    (d: SampleDataset) => d.driver_profile.driver_id,
+    (d: NoShowDataset) => d.dispute_ticket.dispute_id,
+    (d: NoShowDataset) => d.trip_data.trip_id,
+    (d: NoShowDataset) => d.rider_profile.rider_id,
+    (d: NoShowDataset) => d.driver_profile.driver_id,
   ]) {
     expect(new Set(manifest.cases.map((c) => select(load(c.dispute_id)))).size).toBe(10);
   }
@@ -31,7 +31,7 @@ test('exactly ten unique complete input records with separate answer keys', () =
 
 test.each(manifest.cases)('$dispute_id validates, keeps all input data, and resolves rubric references', (entry) => {
   const raw = load(entry.dispute_id);
-  const parsed = sampleDatasetSchema.parse(raw);
+  const parsed = noShowDatasetSchema.parse(raw);
   // No unknown answer-key fields silently stripped by the schema.
   expect(parsed).toEqual(raw);
   expect(Object.keys(parsed)).toHaveLength(8);

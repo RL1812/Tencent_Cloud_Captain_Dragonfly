@@ -89,6 +89,17 @@ export const judgeOutputSchema = z.object({
     conflict: z.boolean(),
     sourceRefs: z.array(z.string().min(1)),
   })).min(1),
+  resolution: z.object({
+    action: z.enum(['full_refund', 'partial_refund', 'compensation', 'no_action']),
+    // Models sometimes answer "12.40"
+    amount: z.coerce.number().min(0).transform((n) => Math.round(n * 100) / 100),
+    recipient: z.enum(['rider', 'driver', 'none']),
+    basis: z.string().min(1),
+  }),
+  partyNotices: z.object({
+    rider: z.string().min(1),
+    driver: z.string().min(1),
+  }),
 });
 export type JudgeOutput = z.infer<typeof judgeOutputSchema>;
 export type JudgeReview = AIReview & {

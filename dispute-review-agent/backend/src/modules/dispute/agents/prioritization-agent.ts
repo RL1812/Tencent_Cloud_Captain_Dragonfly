@@ -36,7 +36,9 @@ export function runPrioritizationAgent(input: AgentInput): PriorityAssessment {
       reasons.push('Property-damage claims require accelerated evidence preservation.');
     }
   } else {
-    reasons.push('Standard no-show fee dispute queue.');
+    reasons.push(record.dispute_ticket.dispute_type === 'route_deviation'
+      ? 'Standard route-deviation fare dispute queue.'
+      : 'Standard no-show fee dispute queue.');
     if (record.rider_profile.fraud_flags > 0 || record.driver_profile.fraud_flags > 0) {
       priority = 'high';
       reasons.push('An account risk flag requires additional review.');

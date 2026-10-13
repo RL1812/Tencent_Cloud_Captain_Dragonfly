@@ -4,11 +4,22 @@ The Rider Advocate and Driver Advocate independently receive the **entire JSON b
 from the DISP-002 markdown. Do not pass the markdown's expected ruling or evidence
 summary to the models. Existing web-app DisputeCase inputs remain supported.
 
-The eight dataset sections are dispute_ticket, rider_profile, driver_profile,
-trip_data, gps_telemetry, chat_logs, app_events, and cancellation_policy.
-dataset.ts validates timestamps, coordinate ranges, numeric fields and matching IDs.
-The dataset schema currently covers no_show_charge; other structured dispute
-datasets need their own schemas. Legacy case categories remain available.
+dataset.ts validates timestamps, coordinate ranges, numeric fields and matching IDs
+for two structured dispute types (other legacy case categories remain available):
+
+- no_show_charge (DISP-002, frontend/public/samples/disp-002.json): dispute_ticket,
+  rider_profile, driver_profile, trip_data, gps_telemetry, chat_logs, app_events,
+  cancellation_policy.
+- route_deviation (DISP-003, frontend/public/samples/disp-003.json): the same shared
+  sections, with trip_data holding the upfront estimate, metered distance and
+  fare_breakdown, plus recommended_route and fare_policy.
+
+For route deviations, route-analysis.ts computes, without a model call, the extra
+distance against the recommended route, GPS points more than 500 m off it, mid-trip
+stops, duration against the estimate, and whether the fare breakdown adds up. The
+agents receive it as computed_route_analysis and can cite /computed_route_analysis/...;
+it is kept separate from originalRecord. Policy arguments must cite the dataset's
+policy section (/cancellation_policy/ or /fare_policy/).
 
 ## Calls
 
@@ -46,8 +57,14 @@ whether a model's interpretation is correct.
 
 The Judge retains the existing UI-compatible review fields and adds disputeId,
 mode, sourceRefs and missingEvidence. The orchestrator includes both advocate
-submissions. Monetary actions are described in suggestedActions in SGD for this
-Singapore sample. There is no payment execution.
+submissions. Every ruling carries a structured resolution: action (full_refund,
+partial_refund, compensation or no_action), amount, currency (set by code: SGD for
+datasets), recipient and the calculation in basis. It is rejected if no_action moves
+money, a refund has no recipient or amount, the amount exceeds the disputed charge,
+or an inconclusive ruling moves money. The Judge also writes partyNotices: a
+plain-language message for the rider and for the driver. The UI marks them as held
+when the case is escalated and superseded after a human decision. There is no
+payment execution or message delivery.
 
 Unavailable or invalid model output returns mode=fallback and confidenceScore=0.
 If either advocate fails, the Judge call is skipped and the result is inconclusive.

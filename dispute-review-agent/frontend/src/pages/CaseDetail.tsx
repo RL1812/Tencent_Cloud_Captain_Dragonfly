@@ -34,7 +34,9 @@ import {
   HumanDecisionPanel,
   JudgeChecklist,
   JudgeSources,
+  PartyNoticesCard,
   PrecedentsUsed,
+  ResolutionSummary,
 } from '@/components/AgentReview';
 import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
@@ -92,7 +94,7 @@ function TripDetail({ icon: Icon, label, value }: { icon: React.ElementType; lab
 }
 
 // --- AI Review Content ---
-function AIReviewContent({ review }: { review: AIReview }) {
+function AIReviewContent({ c, review }: { c: DisputeCase; review: AIReview }) {
   const recColor = recommendationColor(review.recommendation);
 
   return (
@@ -130,6 +132,9 @@ function AIReviewContent({ review }: { review: AIReview }) {
           />
         </div>
       </div>
+
+      <ResolutionSummary review={review} />
+      <PartyNoticesCard c={c} />
 
       {/* Summary */}
       <Card>
@@ -478,7 +483,7 @@ export default function CaseDetail() {
           </CardContent>
         </Card>
       ) : c.review ? (
-        <AIReviewContent review={c.review} />
+        <AIReviewContent c={c} review={c.review} />
       ) : (
         <Card className="border-dashed border-2">
           <CardContent className="py-16">

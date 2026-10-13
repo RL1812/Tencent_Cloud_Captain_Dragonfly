@@ -156,10 +156,10 @@ source, free, and runs locally — no API keys.
 ### Setup
 
 ```bash
-# 1. Services (or install PostgreSQL + pgvector and Ollama natively)
+# 1. Services: PostgreSQL in Docker, Ollama native (see ../README.md)
 docker compose up -d                                   # from dispute-review-agent/
-docker compose exec ollama ollama pull bge-m3
-docker compose exec ollama ollama pull qwen2.5:7b
+ollama pull bge-m3
+ollama pull qwen2.5:7b
 
 # 2. Backend
 cp .env.example .env

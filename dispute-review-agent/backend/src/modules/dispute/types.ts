@@ -12,6 +12,23 @@ export type DisputeType =
   | 'property_damage'
   | 'safety_accident';
 export type Recommendation = 'driver' | 'passenger' | 'shared' | 'inconclusive';
+export type ResolutionAction = 'full_refund' | 'partial_refund' | 'compensation' | 'no_action';
+
+/** The concrete outcome of a ruling: what money moves, how much, and to whom. */
+export interface Resolution {
+  action: ResolutionAction;
+  amount: number;
+  currency: 'SGD' | 'CNY';
+  recipient: 'rider' | 'driver' | 'none';
+  /** How the amount follows from the policy and the record */
+  basis: string;
+}
+
+/** Plain-language explanations of the ruling, addressed to each party. */
+export interface PartyNotices {
+  rider: string;
+  driver: string;
+}
 
 export interface Party {
   name: string;
@@ -94,6 +111,8 @@ export interface AIReview {
   checklist?: ChecklistAnswer[];
   /** Case numbers of the human precedents shown to the Judge */
   precedentsUsed?: string[];
+  resolution?: Resolution;
+  partyNotices?: PartyNotices;
   priorityAssessment?: PriorityAssessment;
   evidenceValidation?: EvidenceValidation;
   escalation?: Escalation;

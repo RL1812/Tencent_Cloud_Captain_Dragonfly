@@ -58,7 +58,7 @@ flowchart LR
 
 | Component | Where | What it does |
 |---|---|---|
-| Dashboard / Submit / Case detail | `frontend/src/pages/` | Pages for listing cases, creating one (by form or by importing the DISP-002 dataset) and reviewing it |
+| Dashboard / Submit / Case detail | `frontend/src/pages/` | Pages for listing cases, creating one (by form or by importing the DISP-002 no-show or DISP-003 route-deviation dataset) and reviewing it |
 | Agent review UI | `frontend/src/components/AgentReview.tsx` | Both advocates' submissions, the Judge's checklist and cited sources, the precedents it used, and the human judge panel |
 | Precedents page | `frontend/src/pages/Precedents.tsx` | Lists the human decisions the AI Judge learns from; reviewers can delete any of them |
 | Dispute routes + case store | `backend/src/modules/dispute/` | Case CRUD, evidence, review and human override; cases live **in memory** and reset on restart |
@@ -140,20 +140,25 @@ result (re-applying the confidence rule above), or to pending if the AI never re
 
 ### Prerequisites
 
-- Node.js 20+
-- Docker (for PostgreSQL + Ollama) — or install PostgreSQL 13+ with pgvector 0.8+ and
-  [Ollama](https://ollama.com) natively. On macOS the native Ollama app is much faster than Docker
-  because it uses the GPU.
+The app runs natively; only PostgreSQL runs in Docker.
+
+- Node.js 20+ — e.g. `brew install fnm && fnm install 22`
+- [Ollama](https://ollama.com), the native app — e.g. `brew install --cask ollama`. On macOS it is
+  much faster than the Docker image because it uses the GPU.
+- Docker (for PostgreSQL + pgvector) — or install PostgreSQL 13+ with pgvector 0.8+ natively
 
 ### 1. Start the database and models
 
 ```bash
-docker compose up -d
-docker compose exec ollama ollama pull bge-m3       # embeddings, ~1.2 GB
-docker compose exec ollama ollama pull qwen2.5:7b   # answers, ~4.7 GB
+docker compose up -d                           # PostgreSQL + pgvector on :5432
+ollama pull bge-m3                             # embeddings, ~1.2 GB
+ollama pull qwen2.5:7b                         # answers, ~4.7 GB
 ```
 
-With native Ollama, run `ollama pull bge-m3 && ollama pull qwen2.5:7b` instead.
+`docker compose down` stops the database and keeps its data; `docker compose down -v` also
+deletes the data. Without native Ollama, start its container with
+`docker compose --profile ollama up -d` and pull the models with
+`docker compose exec ollama ollama pull <model>`.
 
 ### 2. Backend (terminal 1)
 

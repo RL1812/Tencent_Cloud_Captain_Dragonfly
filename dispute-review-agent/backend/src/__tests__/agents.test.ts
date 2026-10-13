@@ -56,6 +56,8 @@ const judge = {
   checklist: judgeChecklist(dataset).map(({ id }) => ({
     id, finding: 'Recorded.', conflict: id === 'C2', sourceRefs: ['/trip_data/driver_wait_start'],
   })),
+  resolution: { action: 'no_action', amount: 0, recipient: 'none', basis: 'Pending clarification of the wait-start basis.' },
+  partyNotices: { rider: 'We are reviewing your dispute.', driver: 'We are reviewing this trip.' },
 };
 
 beforeEach(() => chat.mockReset());
@@ -252,11 +254,13 @@ test('the Judge must answer every checklist item; its answers carry the item tex
   expect(await reviewDispute(dataset)).toMatchObject({ mode: 'fallback', recommendation: 'inconclusive' });
 });
 
-test('a flagged conflict must be listed as unresolved', async () => {
+test('a flagged conflict the Judge did not list is listed for the reviewer', async () => {
   chat.mockResolvedValueOnce(JSON.stringify(advocate))
     .mockResolvedValueOnce(JSON.stringify(advocate))
     .mockResolvedValueOnce(JSON.stringify({ ...judge, missingEvidence: [] }));
-  expect(await reviewDispute(dataset)).toMatchObject({ mode: 'fallback' });
+  const result = await reviewDispute(dataset);
+  expect(result.mode).toBe('llm');
+  expect(result.missingEvidence).toEqual([expect.stringMatching(/^Conflict at C2 \(.+\): Recorded\.$/)]);
 });
 
 describe('human decisions and precedents', () => {

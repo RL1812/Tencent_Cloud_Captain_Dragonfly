@@ -1,8 +1,13 @@
-# Open-source services for the knowledge base. Start with:
+# Open-source services for the knowledge base. Start PostgreSQL with:
 #   docker compose up -d
+# Run Ollama natively (it uses the GPU on macOS) and pull the models:
+#   ollama pull bge-m3 && ollama pull qwen2.5:7b
+# then run the backend as usual (npm run dev); its .env defaults point here.
+#
+# No native Ollama (e.g. Linux without a GPU)? Start the container instead:
+#   docker compose --profile ollama up -d
 #   docker compose exec ollama ollama pull bge-m3
 #   docker compose exec ollama ollama pull qwen2.5:7b
-# then run the backend as usual (npm run dev); its .env defaults point here.
 
 services:
   postgres:
@@ -22,9 +27,10 @@ services:
       retries: 10
 
   ollama:
-    # Local model server (MIT). On macOS, the native Ollama app is much faster
-    # (it uses the GPU); if you use it, skip this service.
+    # Local model server (MIT). Opt-in: the native Ollama app is much faster on
+    # macOS because it uses the GPU, so this only starts with --profile ollama.
     image: ollama/ollama:latest
+    profiles: ['ollama']
     ports:
       - '11434:11434'
     volumes:
