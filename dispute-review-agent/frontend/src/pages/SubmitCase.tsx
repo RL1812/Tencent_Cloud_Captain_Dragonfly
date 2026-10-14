@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DatasetImport } from '@/components/DatasetImport';
+import { DateTimeField } from '@/components/DateTimeField';
 import { EvidenceForm, EvidenceList } from '@/components/EvidenceEditor';
 import { disputeApi } from '@/lib/dispute-api';
 import { getErrorMessage } from '@/lib/api-client';
@@ -48,6 +49,7 @@ const initialForm: CreateDisputeDTO = {
     distance: 0,
     vehicleModel: '',
     plateNumber: '',
+    currency: 'SGD',
   },
   evidence: [],
 };
@@ -346,28 +348,24 @@ export default function SubmitCase() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="pickup-time">Pickup time</Label>
-                <Input
+                <DateTimeField
                   id="pickup-time"
-                  type="datetime-local"
                   value={form.trip.pickupTime}
-                  onChange={(e) => updateTrip('pickupTime', e.target.value)}
-                  className="mt-1.5"
+                  onChange={(v) => updateTrip('pickupTime', v)}
                 />
               </div>
               <div>
                 <Label htmlFor="dropoff-time">Drop-off time</Label>
-                <Input
+                <DateTimeField
                   id="dropoff-time"
-                  type="datetime-local"
                   value={form.trip.dropoffTime}
-                  onChange={(e) => updateTrip('dropoffTime', e.target.value)}
-                  className="mt-1.5"
+                  onChange={(v) => updateTrip('dropoffTime', v)}
                 />
               </div>
             </div>
             <div className="grid grid-cols-4 gap-4">
               <div>
-                <Label htmlFor="fare">Fare (¥)</Label>
+                <Label htmlFor="fare">Fare (S$)</Label>
                 <Input
                   id="fare"
                   type="number"

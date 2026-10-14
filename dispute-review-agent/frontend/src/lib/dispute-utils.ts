@@ -122,12 +122,12 @@ export const resolutionActionLabels: Record<ResolutionAction, string> = {
 
 /** Money with its currency symbol and two decimals, e.g. S$12.40. */
 export function formatAmount(amount: number, currency?: 'CNY' | 'SGD'): string {
-  return `${currency === 'SGD' ? 'S$' : '¥'}${amount.toFixed(2)}`;
+  return `${currency === 'CNY' ? '¥' : 'S$'}${amount.toFixed(2)}`;
 }
 
-/** Fare with its currency symbol (S$ for SGD, ¥ otherwise). */
+/** Fare with its currency symbol (S$ by default, ¥ only for CNY). */
 export function formatFare(fare: number, currency?: 'CNY' | 'SGD'): string {
-  return `${currency === 'SGD' ? 'S$' : '¥'}${fare}`;
+  return `${currency === 'CNY' ? '¥' : 'S$'}${fare}`;
 }
 
 export function formatDateTime(iso: string): string {
