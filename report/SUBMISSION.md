@@ -85,6 +85,10 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 
 ### 4.2 Technical Architecture
 
+![RydeResolve system architecture](architecture.png)
+
+*Figure: components, the LangGraph review workflow, human escalation and the precedent feedback loop.*
+
 **Stack:**
 
 | Layer | Technology |
@@ -386,3 +390,24 @@ This is a hackathon prototype. The limits below are stated plainly so that the d
 | Innovation and creativity | Precedent calibration from human decisions; deterministic route analysis so agents cite measured numbers; no tie-breaker fallback. |
 | User experience | A React interface built on shadcn/ui and Radix UI components, with the agent transcript, checklist and resolution on one case page. |
 | Responsible AI and ethics | Section 8. |
+
+---
+
+## 11. Submission Materials and Status
+
+Items marked **TO ADD** depend on teammates or on final screenshots and are intentionally left open.
+
+| Handbook item | Status | Where |
+|---|---|---|
+| Project title | Done | Section 1 |
+| Short blurb (under 10 words) | Done (9 words) | Section 1; `report/FORM_FIELDS.md` |
+| Project description | Done | Sections 2–5; paste-ready text in `report/FORM_FIELDS.md` |
+| Architecture diagram | Done | `report/architecture.png` (also embedded in Section 4.2) |
+| Cover image, 16:9 | Done | `report/cover/cover-380x216.png` (1520×855 master alongside) |
+| Source code | Done | GitHub repository, `main` branch |
+| Which tool wrote the core agents | **TO CONFIRM** | Section 7 (waiting for teammates) |
+| CodeBuddy / WorkBuddy conversation history | **TO ADD** | `proof/` (export from the CodeBuddy app after the last session) |
+| At least 3 chat screenshots from CodeBuddy / WorkBuddy | **TO ADD** | `proof/`; one WorkBuddy screenshot (PDF) is already there |
+| Application screenshots (DISP-003 auto-resolution, DISP-002 escalation) | **TO ADD** | `proof/screenshots/` |
+| Demo video, 5–8 minutes (optional) | **TO ADD** | — |
+| Live project link (optional, earns bonus points) | **TO ADD** | — |
