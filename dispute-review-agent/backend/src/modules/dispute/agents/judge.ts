@@ -47,6 +47,12 @@ function disputedAmount(input: AgentInput): number {
   return input.trip.fare;
 }
 
+/**
+ * Compensation may legitimately exceed the disputed charge (e.g. a rider is owed
+ * more than the fare for a loss). Other actions (refunds) are capped at the charge.
+ */
+const COMPENSATION_CAP_MULTIPLIER = 2;
+
 /** The ruling must name a concrete, internally consistent outcome that fits the disputed charge. */
 function checkedResolution(output: JudgeOutput, input: AgentInput): Resolution {
   const { action, amount, recipient, basis } = output.resolution;
@@ -54,8 +60,11 @@ function checkedResolution(output: JudgeOutput, input: AgentInput): Resolution {
     if (amount !== 0 || recipient !== 'none') throw new Error('no_action must have amount 0 and recipient none');
   } else {
     if (amount <= 0 || recipient === 'none') throw new Error(`${action} needs a positive amount and a recipient`);
-    if (amount > disputedAmount(input) + 0.005) {
-      throw new Error(`${action} of ${amount} exceeds the disputed charge of ${disputedAmount(input)}`);
+    const cap = action === 'compensation'
+      ? disputedAmount(input) * COMPENSATION_CAP_MULTIPLIER
+      : disputedAmount(input);
+    if (amount > cap + 0.005) {
+      throw new Error(`${action} of ${amount} exceeds the cap of ${cap} (disputed charge ${disputedAmount(input)})`);
     }
   }
   if (output.recommendation === 'inconclusive' && action !== 'no_action') {
@@ -94,6 +103,7 @@ export async function runJudge(
   const record = validateInput(input);
   // Do not silently judge from one successful advocate and one template fallback.
   if (riderCase.mode !== 'llm' || driverCase.mode !== 'llm') return unavailable(record);
+  let output: JudgeOutput | undefined;
   try {
     checkAdvocateSources(riderCase, record);
     checkAdvocateSources(driverCase, record);
@@ -115,10 +125,10 @@ policy exemption supported by the record) and compute any refund from fare_polic
 resolution is the concrete outcome, in ${currency(record)}:
 - full_refund: return the whole disputed charge to the rider
 - partial_refund: return part of it to the rider (e.g. the overcharge above the upfront estimate)
-- compensation: pay a party for a loss caused by the other party or the platform
+- compensation: pay a party for a loss caused by the other party or the platform (may exceed the disputed charge, up to ${disputedAmount(record) * COMPENSATION_CAP_MULTIPLIER} ${currency(record)})
 - no_action: the charge stands (e.g. a no-show fee is upheld and stays with the driver); amount 0,
   recipient "none". Use no_action when the ruling is inconclusive.
-The amount can never exceed the disputed charge (${disputedAmount(record)} ${currency(record)}). Show the calculation in basis.
+Refunds (full_refund, partial_refund) can never exceed the disputed charge (${disputedAmount(record)} ${currency(record)}). Show the calculation in basis.
 partyNotices are short messages (3-5 sentences) sent to each party: plain, respectful language
 addressed to that person ("you"), stating the outcome, any amount and when it applies, the main
 reason in everyday terms, and that they can reply to appeal. No JSON paths, internal agent names or
@@ -161,7 +171,7 @@ Select one value for each enum field. Do not output the pipe-separated examples 
         }),
       },
     ], { temperature: 0.1, max_tokens: 3000 });
-    const output = judgeOutputSchema.parse(parseJsonObject(response));
+    output = judgeOutputSchema.parse(parseJsonObject(response));
     assertSourceRefs(output.sourceRefs, record);
     const checklist = checklistAnswers(required, output, record);
     return {
@@ -174,7 +184,18 @@ Select one value for each enum field. Do not output the pipe-separated examples 
       reviewedAt: new Date().toISOString(),
     };
   } catch (err) {
-    logger.warn({ agent: 'judge', err: err instanceof Error ? err.message : String(err) }, 'Judge output unavailable or invalid');
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn({
+      agent: 'judge',
+      err: msg,
+      disputeId: disputeId(record),
+      disputedAmount: disputedAmount(record),
+      ...(output?.resolution && {
+        action: output.resolution.action,
+        attemptedAmount: output.resolution.amount,
+        recipient: output.resolution.recipient,
+      }),
+    }, 'Judge output unavailable or invalid');
     return unavailable(record);
   }
 }

@@ -70,35 +70,90 @@ flowchart LR
 
 ## How a dispute review works
 
+The review runs as a LangGraph state machine (`agents/orchestrator.ts`). Each node writes
+its output into a shared state; conditional edges route the flow based on confidence and
+escalation rules.
+
 ```mermaid
 flowchart TD
-    A["POST /api/disputes/:id/review<br/>(stored case)"] --> V
-    B["POST /api/disputes/dataset-review<br/>(DISP-002 JSON, not stored)"] --> V
-    V["Validate input<br/>dataset schema: IDs, timestamps, coordinates"] --> C
-    C["Case context = original record + allowed JSON-pointer sourceRefs<br/>(no earlier review, escalation or human decision)"]
+    START((START)) --> PRIO
 
-    C --> R["Rider Advocate"]
-    C --> D["Driver Advocate"]
-    R & D -.- M["LLM client: gemini-3.8-flash<br/>→ gemini-3.1-flash-lite → gemini-3.5-flash<br/>(on error, quota, stall or timeout)"]
+    subgraph intake["Intake (deterministic, no LLM)"]
+        PRIO["Prioritization agent<br/>elevates safety / accident / fraud cases<br/>assigns priority + target response time"]
+        EV["Evidence validation agent<br/>checks structural usability of records"]
+        RA{"Route-deviation<br/>dataset?"}
+        RANAL["Route analysis (deterministic)<br/>haversine distance vs recommended route,<br/>off-route points, unexpected stops,<br/>fare-breakdown arithmetic, deviation % vs tolerance"]
+    end
 
-    R --> RV{"Schema valid and<br/>sourceRefs exist?"}
-    D --> DV{"Schema valid and<br/>sourceRefs exist?"}
+    PRIO --> EV
+    EV --> RA
+    RA -- yes --> RANAL
+    RA -- no --> ADV
+    RANAL --> ADV
+
+    subgraph advocates["Parallel advocates (LLM)"]
+        RIDER["Rider Advocate<br/>argues the passenger's case"]
+        DRIVER["Driver Advocate<br/>argues the driver's case"]
+    end
+
+    ADV["Fan out to<br/>both advocates"] --> RIDER & DRIVER
+    RIDER & DRIVER -.- M["LLM client: gemini-3.8-flash<br/>→ gemini-3.1-flash-lite → gemini-3.5-flash<br/>(on error, quota, stall or timeout)"]
+
+    RIDER --> RV{"Schema valid,<br/>sourceRefs exist?"}
+    DRIVER --> DV{"Schema valid,<br/>sourceRefs exist?"}
     RV -- yes --> RS["mode = llm"]
-    RV -- no --> RF["mode = fallback, confidence 0"]
+    RV -- no --> FB1["mode = fallback"]
     DV -- yes --> DS["mode = llm"]
-    DV -- no --> DF["mode = fallback, confidence 0"]
+    DV -- no --> FB2["mode = fallback"]
 
-    RS & RF & DS & DF --> G{"Both advocates<br/>mode = llm?"}
-    G -- no --> X["Inconclusive, mode = fallback<br/>Judge skipped"]
-    P[("Human precedents<br/>up to 3, same dispute type,<br/>never this case")] --> J
-    G -- yes --> J["Judge<br/>weighs both submissions against the original record,<br/>answers the required checklist (C1, C2, …)"]
-    J --> JV{"Schema valid, sourceRefs exist,<br/>every checklist item answered,<br/>conflicts listed as unresolved?"}
-    JV -- no --> X
-    JV -- yes --> OUT["Ruling: driver / passenger / shared / inconclusive<br/>+ confidence, checklist, cited sources, missing evidence,<br/>suggested actions, precedents used, both advocate submissions"]
+    RS & DS & FB1 & FB2 --> JG{"Both advocates<br/>mode = llm?"}
+    JG -- no --> FALL["Judge skipped<br/>inconclusive, confidence 0<br/>mode = fallback"]
+    JG -- yes --> JUDGE
+
+    subgraph judge_node["Judge (LLM)"]
+        JUDGE["Judge weighs both submissions<br/>against the original record"]
+        CL["Checklist<br/>answers every required item (C1, C2, …)<br/>marks source conflicts"]
+        PREC[("Precedents<br/>up to 3, same dispute type,<br/>never this case")]
+        RES["Structured resolution<br/>action + amount + currency + recipient<br/>full_refund / partial_refund /<br/>compensation / no_action<br/>capped at disputed charge"]
+        PNOT["Party notices<br/>plain-language messages to rider<br/>and driver"]
+    end
+
+    PREC -- "calibrate standards" --> JUDGE
+    JUDGE --> CL --> RES --> PNOT
+
+    PNOT --> JV{"Schema valid, sourceRefs exist,<br/>every checklist item answered,<br/>resolution within cap?"}
+    JV -- no --> FALL
+
+    JV -- yes --> ESC
+
+    subgraph escalation["Confidence-based escalation"]
+        ESC["Escalation agent"]
+        ESC --> ECHK{"needs human?"}
+    end
+
+    ECHK -- "confidence ≥ 60%<br/>and not inconclusive" --> AUTO["Automatic resolution<br/>status = resolved"]
+    ECHK -- "confidence < 60%<br/>or inconclusive" --> HUMAN_REQ["Escalated to human<br/>status = under_review"]
+    FALL --> HUMAN_REQ
+
+    AUTO --> END1((END))
+    HUMAN_REQ --> END2((END))
+
+    subgraph post["Post-review (outside LangGraph)"]
+        HUMAN["Human decision<br/>reviewer decides any case<br/>overrides AI, can be revised / withdrawn"]
+        LEARN["Learning feedback<br/>use-as-precedent → saved to precedent store<br/>AI Judge sees it next time<br/>(no retraining)"]
+    end
+
+    HUMAN_REQ -.-> HUMAN
+    AUTO -.-> HUMAN
+    HUMAN --> LEARN
 ```
 
-The two advocates run in parallel and each sees the full record. The Judge only runs when both
-produced validated output, and no fallback ever picks a winner.
+The two advocates run in parallel and each sees the full record (including
+`computed_route_analysis` for route-deviation cases). The Judge only runs when both
+produced validated output, and no fallback ever picks a winner. The route-analysis step is
+deterministic — it computes haversine distances, off-route points, unexpected stops, and
+fare-breakdown arithmetic from the dataset's GPS telemetry, so the agents cite measured
+numbers instead of estimating from raw coordinates.
 
 **The AI learns from human decisions without retraining.** When a reviewer decides a case and ticks
 "use as precedent", the decision and its reason are saved. The Judge is then shown up to 3 recent

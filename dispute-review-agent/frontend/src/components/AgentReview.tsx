@@ -565,6 +565,33 @@ export function JudgeSources({ review }: { review: AIReview }) {
 
 export { confidenceBarColor };
 
+/**
+ * Deterministic route-deviation measurements computed from GPS and fare records.
+ * Shown for route-deviation cases that were imported from a sample dataset, where
+ * the import stores the computed findings as a platform evidence item.
+ */
+export function ComputedRouteAnalysis({ c }: { c: DisputeCase }) {
+  if (c.type !== 'route_deviation') return null;
+  const evidence = c.evidence.find(
+    (e) => e.title === 'Route analysis (computed from GPS and fare records)'
+  );
+  if (!evidence) return null;
+  const findings = evidence.content.split('\n').filter(Boolean);
+  if (findings.length === 0) return null;
+  return (
+    <Card className="mb-4">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Gauge className="w-4 h-4 text-muted-foreground" /> Computed route analysis
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <BulletList items={findings} />
+      </CardContent>
+    </Card>
+  );
+}
+
 /** The concrete outcome: action, amount, recipient and how the amount was worked out. */
 export function ResolutionSummary({ review }: { review: AIReview }) {
   const r = review.resolution;

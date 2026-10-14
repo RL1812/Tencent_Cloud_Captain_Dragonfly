@@ -25,7 +25,8 @@ export interface RouteAnalysis {
   estimated_fare: number;
   final_fare: number;
   fare_difference: number;
-  fare_difference_pct: number;
+  /** Percentage difference from the upfront estimate; null when the estimate is zero. */
+  fare_difference_pct: number | null;
   /** (base + distance + time) x surge + booking fee - promo discount */
   breakdown_computed_total: number;
   breakdown_matches_total: boolean;
@@ -35,6 +36,10 @@ export interface RouteAnalysis {
 
 /** GPS points further than this from the recommended route count as off-route. */
 export const OFF_ROUTE_M = 500;
+/** Speed below this (km/h) counts as stationary, tolerating GPS jitter. */
+const STOP_SPEED_KMH = 1;
+/** Stops shorter than this (minutes) are likely GPS noise and are filtered out. */
+const MIN_STOP_MIN = 1;
 const EARTH_M = 6_371_000;
 const CENT = 0.01;
 
@@ -89,19 +94,23 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
   const offsets = points.map((p) => ({ ref: p.ref, m: distanceToRouteM(p, route.waypoints) }));
   const offRoute = offsets.filter((o) => o.m > OFF_ROUTE_M);
 
-  // Stationary runs between pickup and drop-off (the first and last points are the stops themselves)
+  // Stationary runs between pickup and drop-off (the first and last points are the stops themselves).
+  // A speed threshold tolerates GPS jitter; brief blips below MIN_STOP_MIN are filtered as noise.
   const stops: RouteAnalysis['unexpected_stops'] = [];
   let run: typeof points = [];
   const flush = () => {
-    if (run.length) stops.push({
-      from: run[0].timestamp, to: run[run.length - 1].timestamp,
-      minutes: round(minutesBetween(run[0].timestamp, run[run.length - 1].timestamp)),
-      points: run.map((p) => p.ref),
-    });
+    if (run.length) {
+      const minutes = round(minutesBetween(run[0].timestamp, run[run.length - 1].timestamp));
+      if (minutes >= MIN_STOP_MIN) stops.push({
+        from: run[0].timestamp, to: run[run.length - 1].timestamp,
+        minutes,
+        points: run.map((p) => p.ref),
+      });
+    }
     run = [];
   };
   for (const p of points.slice(1, -1)) {
-    if (p.speed_kmh === 0) run.push(p);
+    if (p.speed_kmh < STOP_SPEED_KMH) run.push(p);
     else flush();
   }
   flush();
@@ -115,19 +124,37 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
   const breakdownOk = Math.abs(computedTotal - fb.total) < CENT;
   const totalOk = Math.abs(fb.total - trip.final_fare) < CENT;
   const tolerance = data.fare_policy.deviation_tolerance_pct;
+  const gpsPathKm = round(pathM / 1000);
 
-  const findings = [
-    `Metered distance ${trip.actual_distance_km} km vs recommended ${route.distance_km} km ` +
-      `(${extraKm >= 0 ? '+' : ''}${round(extraKm)} km, ${round(deviationPct)}%; policy tolerance ${tolerance}%).`,
-    offRoute.length
-      ? `${offRoute.length} of ${points.length} trip GPS points are more than ${OFF_ROUTE_M} m from the recommended route ` +
-        `(max ${Math.round(Math.max(...offsets.map((o) => o.m)))} m).`
-      : `All ${points.length} trip GPS points are within ${OFF_ROUTE_M} m of the recommended route.`,
-    `Trip took ${round(actualMin)} min vs ${trip.estimated_duration_min} min estimated.`,
-    ...stops.map((s) => `Stationary mid-trip from ${s.from} to ${s.to} (${s.minutes} min).`),
-    `Final fare ${money(trip.final_fare)} vs upfront estimate ${money(trip.estimated_fare)} ` +
-      `(${fareDiff >= 0 ? '+' : ''}${money(fareDiff)}).`,
-  ];
+  const findings: string[] = [];
+
+  if (points.length === 0) {
+    findings.push('No GPS points were recorded during the trip window (pickup to drop-off).');
+  } else {
+    findings.push(
+      `Metered distance ${trip.actual_distance_km} km vs recommended ${route.distance_km} km ` +
+        `(${extraKm >= 0 ? '+' : ''}${round(extraKm)} km, ${round(deviationPct)}%; policy tolerance ${tolerance}%).`
+    );
+    findings.push(
+      offRoute.length
+        ? `${offRoute.length} of ${points.length} trip GPS points are more than ${OFF_ROUTE_M} m from the recommended route ` +
+          `(max ${Math.round(Math.max(...offsets.map((o) => o.m)))} m).`
+        : `All ${points.length} trip GPS points are within ${OFF_ROUTE_M} m of the recommended route.`
+    );
+    // Flag a material discrepancy between the GPS path distance and the metered distance
+    if (gpsPathKm > 0 && Math.abs(gpsPathKm - trip.actual_distance_km) > Math.max(0.5, trip.actual_distance_km * 0.1)) {
+      findings.push(
+        `GPS path distance ${gpsPathKm} km differs materially from the metered distance ${trip.actual_distance_km} km, ` +
+        `which may indicate a metering issue or GPS gaps.`
+      );
+    }
+    findings.push(`Trip took ${round(actualMin)} min vs ${trip.estimated_duration_min} min estimated.`);
+    findings.push(...stops.map((s) => `Stationary mid-trip from ${s.from} to ${s.to} (${s.minutes} min).`));
+    findings.push(
+      `Final fare ${money(trip.final_fare)} vs upfront estimate ${money(trip.estimated_fare)} ` +
+        `(${fareDiff >= 0 ? '+' : ''}${money(fareDiff)}).`
+    );
+  }
   if (!breakdownOk) findings.push(`Fare components add up to ${money(computedTotal)}, not the stated total ${money(fb.total)}.`);
   if (!totalOk) findings.push(`Breakdown total ${money(fb.total)} differs from the charged fare ${money(trip.final_fare)}.`);
   if (fb.surge_multiplier > 1) findings.push(`Surge multiplier ${fb.surge_multiplier} applied.`);
@@ -140,7 +167,7 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
     deviation_pct: round(deviationPct),
     tolerance_pct: tolerance,
     exceeds_tolerance: deviationPct > tolerance,
-    gps_path_distance_km: round(pathM / 1000),
+    gps_path_distance_km: gpsPathKm,
     max_off_route_m: offsets.length ? Math.round(Math.max(...offsets.map((o) => o.m))) : 0,
     off_route_points: offRoute.length,
     first_off_route_point: offRoute[0]?.ref ?? null,
@@ -151,7 +178,7 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
     estimated_fare: money(trip.estimated_fare),
     final_fare: money(trip.final_fare),
     fare_difference: money(fareDiff),
-    fare_difference_pct: trip.estimated_fare > 0 ? round((fareDiff / trip.estimated_fare) * 100) : 0,
+    fare_difference_pct: trip.estimated_fare > 0 ? round((fareDiff / trip.estimated_fare) * 100) : null,
     breakdown_computed_total: money(computedTotal),
     breakdown_matches_total: breakdownOk,
     total_matches_final_fare: totalOk,

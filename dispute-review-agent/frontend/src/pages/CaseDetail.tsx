@@ -30,6 +30,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   AgentTranscript,
+  ComputedRouteAnalysis,
   FallbackNotice,
   HumanDecisionPanel,
   JudgeChecklist,
@@ -134,6 +135,7 @@ function AIReviewContent({ c, review }: { c: DisputeCase; review: AIReview }) {
       </div>
 
       <ResolutionSummary review={review} />
+      <ComputedRouteAnalysis c={c} />
       <PartyNoticesCard c={c} />
 
       {/* Summary */}

@@ -121,7 +121,11 @@ export type RouteDeviationDataset = z.infer<typeof routeDeviationDatasetSchema>;
 export type SampleDataset = NoShowDataset | RouteDeviationDataset;
 
 export function isDataset(input: object): input is SampleDataset {
-  return 'dispute_ticket' in input;
+  return 'dispute_ticket' in input &&
+    typeof input.dispute_ticket === 'object' &&
+    input.dispute_ticket !== null &&
+    'dispute_type' in input.dispute_ticket &&
+    typeof input.dispute_ticket.dispute_type === 'string';
 }
 
 export function isNoShowDataset(input: object): input is NoShowDataset {
