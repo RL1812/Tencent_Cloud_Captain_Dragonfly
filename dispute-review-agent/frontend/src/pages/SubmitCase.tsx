@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, LayoutDashboard } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -128,13 +128,20 @@ export default function SubmitCase() {
   return (
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
       {/* Page Header */}
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-        <button onClick={() => navigate('/')} className="hover:text-foreground">
+      <nav
+        aria-label="Breadcrumb"
+        className="mb-4 inline-flex items-center gap-0.5 rounded-full border border-border bg-card p-1 text-xs shadow-xs"
+      >
+        <button
+          onClick={() => navigate('/')}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <LayoutDashboard className="h-3.5 w-3.5" />
           Dashboard
         </button>
-        <ChevronRight className="w-3.5 h-3.5" />
-        <span className="text-foreground">Submit case</span>
-      </div>
+        <ChevronRight className="h-3 w-3 text-muted-foreground/60" />
+        <span className="rounded-full bg-accent px-3 py-1 font-semibold text-accent-foreground">Submit case</span>
+      </nav>
       <h1 className="text-2xl font-bold mb-6">Submit a new dispute</h1>
 
       <DatasetImport />

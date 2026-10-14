@@ -3,7 +3,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FilePlus, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -21,23 +21,14 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col">
+      <aside className="relative isolate overflow-hidden w-14 md:w-52 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col">
         {/* Logo */}
-        <div className="p-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-2.5 border-l-4 border-sidebar-primary pl-3">
-            <div>
-              <div className="text-sm font-bold text-sidebar-foreground">
-                Dispute Review
-              </div>
-              <div className="mt-1 text-xs font-medium text-sidebar-foreground/55">
-                AI resolution workspace
-              </div>
-            </div>
-          </div>
+        <div className="px-2 md:px-4 pt-5 pb-4">
+          <img src="/ryde-logo.png" alt="Ryde" className="h-6 md:h-8 w-auto mx-auto md:mx-0 object-contain object-left" />
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        {/* Navigation: icon tiles make two items read as a deliberate menu */}
+        <nav className="relative z-10 px-1.5 md:px-3 py-3 space-y-1.5">
           {navItems.map((item) => {
             const isActive =
               item.to === '/'
@@ -48,30 +39,40 @@ export function Layout({ children }: LayoutProps) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'group flex items-center justify-center md:justify-start gap-3 rounded-xl p-1.5 md:pr-3 text-sm font-semibold transition-all',
                   isActive
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-xs ring-1 ring-primary/15'
+                    : 'text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground'
                 )}
               >
-                <item.icon className="w-4 h-4" />
-                {item.label}
+                <span
+                  className={cn(
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors',
+                    isActive
+                      ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm shadow-primary/30'
+                      : 'bg-muted text-sidebar-foreground/70 group-hover:bg-card'
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                </span>
+                <span className="hidden md:inline">{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="p-4 border-t border-sidebar-border">
-          <div className="flex items-center gap-2 text-xs text-sidebar-foreground/50">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Human-supervised AI · v1.0</span>
-          </div>
+        {/* Decorative base: a blush glow with soft rings, no text */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-64 -z-10">
+          <div className="absolute inset-0 bg-gradient-to-t from-primary/15 via-primary/5 to-transparent" />
+          <div className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full border border-primary/20" />
+          <div className="absolute -bottom-32 -left-24 h-72 w-72 rounded-full border border-primary/15" />
+          <div className="absolute -bottom-40 -left-32 h-88 w-88 rounded-full border border-primary/10" />
+          <div className="absolute -bottom-10 -right-10 h-28 w-28 rounded-full bg-primary/10 blur-xl" />
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-muted/30">{children}</main>
+      <main className="app-bg flex-1 overflow-auto">{children}</main>
     </div>
   );
 }

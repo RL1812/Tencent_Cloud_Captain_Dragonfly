@@ -4,13 +4,9 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Loader2,
-  ClipboardList,
-  Clock,
-  Search,
-  CheckCircle2,
   ArrowRight,
   ArrowDown,
   ArrowUp,
@@ -40,35 +36,6 @@ import {
 import { cn } from '@/lib/utils';
 import type { DisputeCase } from '@/types/dispute';
 
-interface StatCardProps {
-  label: string;
-  value: number | undefined;
-  icon: React.ElementType;
-  iconClass: string;
-}
-
-function StatCard({ label, value, icon: Icon, iconClass }: StatCardProps) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-3xl font-bold mt-1">
-              {value !== undefined ? value : '--'}
-            </p>
-          </div>
-          <div className={cn('flex items-center justify-center w-12 h-12 rounded-lg', iconClass)}>
-            <Icon className="w-6 h-6" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-
-// --- Sortable columns -------------------------------------------------------
 type SortKey = 'caseNumber' | 'title' | 'createdAt' | 'type' | 'priority' | 'status';
 type SortDir = 'asc' | 'desc';
 interface SortState {
@@ -140,6 +107,7 @@ function SortHead({
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { data: stats } = useQuery({
     queryKey: ['dispute-stats'],
     queryFn: disputeApi.getStats,
@@ -172,56 +140,69 @@ export default function Dashboard() {
     );
   }, [cases, sort]);
 
-  return (
-    <div className="p-6 lg:p-8">
-      {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold">Dispute review dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Ryde Resolve — prioritized, evidence-grounded reviews with human oversight
-          </p>
-        </div>
-        <Link to="/submit">
-          <Button>
-            <FilePlus className="w-4 h-4 mr-2" />
-            Submit new case
-          </Button>
-        </Link>
-      </div>
+  // The most urgent case still waiting for a decision
+  const nextCase = useMemo(() => {
+    const open = (cases ?? []).filter((c) => c.status !== 'resolved');
+    return [...open].sort(
+      (a, b) =>
+        priorityRank[b.priority] - priorityRank[a.priority] ||
+        (Date.parse(a.createdAt) || 0) - (Date.parse(b.createdAt) || 0)
+    )[0];
+  }, [cases]);
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard
-          label="Total cases"
-          value={stats?.total}
-          icon={ClipboardList}
-          iconClass="bg-blue-50 text-blue-600"
-        />
-        <StatCard
-          label="Pending"
-          value={stats?.pending}
-          icon={Clock}
-          iconClass="bg-amber-50 text-amber-600"
-        />
-        <StatCard
-          label="Under review"
-          value={stats?.underReview}
-          icon={Search}
-          iconClass="bg-purple-50 text-purple-600"
-        />
-        <StatCard
-          label="Resolved"
-          value={stats?.resolved}
-          icon={CheckCircle2}
-          iconClass="bg-green-50 text-green-600"
-        />
-      </div>
+  return (
+    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+      {/* Hero: the queue at a glance and the one thing to do next */}
+      <section className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-[#ee4a72] via-[#e93864] to-[#b8264f] px-5 py-6 md:px-8 md:py-8 text-white shadow-md">
+        <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-white/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-[#7a1633]/30 blur-3xl" />
+        <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <h1 className="text-3xl md:text-4xl font-extrabold leading-tight">
+              {stats === undefined
+                ? 'Loading queue…'
+                : stats.pending > 0
+                  ? `${stats.pending} ${stats.pending === 1 ? 'case is' : 'cases are'} waiting for review`
+                  : 'The queue is clear'}
+            </h1>
+            <div className="mt-6 flex flex-wrap gap-3">
+              {nextCase && (
+                <Link to={`/cases/${nextCase.id}`}>
+                  <Button size="lg" className="bg-white text-primary hover:bg-white/90">
+                    Open most urgent case
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
+              <Link to="/submit">
+                <Button size="lg" variant="outline" className="border-white/40 bg-transparent text-white hover:bg-white/15 hover:text-white">
+                  <FilePlus className="mr-2 h-4 w-4" />
+                  Submit new case
+                </Button>
+              </Link>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 lg:w-96">
+            {[
+              { label: 'Total', value: stats?.total },
+              { label: 'Under review', value: stats?.underReview },
+              { label: 'Resolved', value: stats?.resolved },
+            ].map((t) => (
+              <div key={t.label} className="rounded-xl bg-white/15 px-4 py-4 ring-1 ring-white/20">
+                <div className="text-3xl font-extrabold">{t.value ?? '--'}</div>
+                <div className="mt-1 text-xs text-white/65">{t.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Case List */}
       <Card>
         <CardHeader>
-          <CardTitle>Dispute cases</CardTitle>
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-lg">Dispute cases</CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -233,9 +214,9 @@ export default function Dashboard() {
               <TableHeader>
                 <TableRow>
                   <SortHead label="Case number" sortKey="caseNumber" sort={sort} onSort={handleSort} />
-                  <SortHead label="Title" sortKey="title" sort={sort} onSort={handleSort} className="min-w-[200px]" />
-                  <SortHead label="Created" sortKey="createdAt" sort={sort} onSort={handleSort} />
-                  <SortHead label="Type" sortKey="type" sort={sort} onSort={handleSort} />
+                  <SortHead label="Title" sortKey="title" sort={sort} onSort={handleSort} className="w-full" />
+                  <SortHead label="Created" sortKey="createdAt" sort={sort} onSort={handleSort} className="hidden lg:table-cell" />
+                  <SortHead label="Type" sortKey="type" sort={sort} onSort={handleSort} className="hidden xl:table-cell" />
                   <SortHead label="Priority" sortKey="priority" sort={sort} onSort={handleSort} />
                   <SortHead label="Status" sortKey="status" sort={sort} onSort={handleSort} />
                   <TableHead className="text-right">Action</TableHead>
@@ -243,15 +224,17 @@ export default function Dashboard() {
               </TableHeader>
               <TableBody>
                 {sortedCases?.map((c) => (
-                  <TableRow key={c.id} className="hover:bg-muted/50">
+                  <TableRow key={c.id} className="cursor-pointer hover:bg-accent/40" onClick={() => navigate(`/cases/${c.id}`)}>
                     <TableCell className="font-mono text-sm text-muted-foreground">
                       {c.caseNumber}
                     </TableCell>
-                    <TableCell className="font-medium">{c.title}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="w-full max-w-0 font-medium">
+                      <span className="block min-w-40 truncate" title={c.title}>{c.title}</span>
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
                       {formatDateTime(c.createdAt)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden xl:table-cell">
                       <Badge variant="outline">{typeLabels[c.type]}</Badge>
                     </TableCell>
                     <TableCell>

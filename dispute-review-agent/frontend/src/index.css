@@ -82,7 +82,8 @@
   --radius: 0.625rem;
 
   /* === 字体排版 === */
-  --font-family: "Inter Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-heading: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", "Inter Variable", sans-serif;
+  --font-family: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-size-display: 3.5rem;
   --font-size-headline: 2rem;
   --font-size-title: 1.5rem;
@@ -127,40 +128,40 @@
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* === 背景颜色 === */
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: #faf6f8;
+  --foreground: #241b22;
 
   /* === 卡片 === */
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: #241b22;
 
   /* === 弹出层 === */
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
 
   /* === 主色调 === */
-  --primary: #df4268;
+  --primary: #e93864;
   --primary-foreground: #ffffff;
 
   /* === 次要色 === */
-  --secondary: #fff2f5;
-  --secondary-foreground: #5b2437;
+  --secondary: #f6eef1;
+  --secondary-foreground: #4a3540;
 
   /* === 柔和色 === */
-  --muted: #fff6f8;
-  --muted-foreground: #765765;
+  --muted: #f7f0f3;
+  --muted-foreground: #6d5a64;
 
   /* === 强调色 === */
-  --accent: #fde8ee;
-  --accent-foreground: #8c2445;
+  --accent: #fde9ef;
+  --accent-foreground: #b32149;
 
   /* === 危险/错误色 === */
   --destructive: oklch(0.577 0.245 27.325);
 
   /* === 边框和输入框 === */
-  --border: #f0d9e0;
-  --input: #ead1d9;
-  --ring: #df4268;
+  --border: #eadde3;
+  --input: #dfcdd5;
+  --ring: #e93864;
 
   /* === 功能颜色 (新增) === */
   --success: oklch(0.596 0.145 163.225);
@@ -177,7 +178,7 @@
   --theme-blue: oklch(0.546 0.192 262.881);
 
   /* === 图表颜色 === */
-  --chart-1: #df4268;
+  --chart-1: #e93864;
   --chart-2: #f0718f;
   --chart-3: #a92d51;
   --chart-4: #ff9bad;
@@ -185,16 +186,16 @@
 
   /* === 侧边栏 === */
   --sidebar: #ffffff;
-  --sidebar-foreground: #43202d;
-  --sidebar-primary: #df4268;
+  --sidebar-foreground: #3b2a33;
+  --sidebar-primary: #e93864;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #fff0f4;
-  --sidebar-accent-foreground: #a92d51;
-  --sidebar-border: #f2dce3;
-  --sidebar-ring: #df4268;
+  --sidebar-accent: #fdeef3;
+  --sidebar-accent-foreground: #b32149;
+  --sidebar-border: #f0e3e8;
+  --sidebar-ring: #e93864;
 
   /* === Hero 区域 (新增) === */
-  --hero: #a92d51;
+  --hero: #b8264f;
   --hero-foreground: #ffffff;
 
   /* === 动画 Token === */
@@ -296,6 +297,18 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-family);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  h1, h2, h3, h4, [data-slot="card-title"] {
+    font-family: var(--font-heading);
+  }
+  h1, h2 {
+    letter-spacing: -0.01em;
+  }
+  button, input, select, textarea {
+    font-family: inherit;
   }
 }
 
@@ -399,4 +412,15 @@
   .page-transition {
     transition: none !important;
   }
+}
+
+/* Page background: warm blush base, soft Ryde-pink glows in two corners, and a faint dot grid */
+.app-bg {
+  background-color: #fcf7f9;
+  background-image:
+    radial-gradient(900px 520px at 100% -8%, rgb(233 56 100 / 0.11), transparent 62%),
+    radial-gradient(760px 520px at -6% 108%, rgb(233 56 100 / 0.08), transparent 62%),
+    radial-gradient(rgb(160 40 80 / 0.10) 1px, transparent 1.2px);
+  background-size: auto, auto, 24px 24px;
+  background-attachment: fixed;
 }

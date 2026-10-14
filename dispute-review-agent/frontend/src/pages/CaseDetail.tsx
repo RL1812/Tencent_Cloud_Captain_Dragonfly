@@ -2,6 +2,7 @@
  * CaseDetail — Dispute case detail with AI review
  */
 
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -24,10 +25,13 @@ import {
   Lightbulb,
   FileSearch,
   RefreshCw,
+  FolderOpen,
+  Workflow,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   AgentTranscript,
   ComputedRouteAnalysis,
@@ -51,7 +55,6 @@ import {
   priorityBadgeClass,
   recommendationColor,
   confidenceColor,
-  confidenceBarColor,
   formatDateTime,
   formatFare,
 } from '@/lib/dispute-utils';
@@ -96,8 +99,6 @@ function TripDetail({ icon: Icon, label, value }: { icon: React.ElementType; lab
 
 // --- AI Review Content ---
 function AIReviewContent({ c, review }: { c: DisputeCase; review: AIReview }) {
-  const recColor = recommendationColor(review.recommendation);
-
   return (
     <div className="space-y-4">
       {/* Section Header */}
@@ -109,36 +110,12 @@ function AIReviewContent({ c, review }: { c: DisputeCase; review: AIReview }) {
         </span>
       </div>
 
-      {/* Recommendation Banner */}
-      <div className={cn('rounded-lg border p-6', recColor.bg)}>
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm text-muted-foreground mb-1">AI recommendation</p>
-            <p className={cn('text-2xl font-bold', recColor.text)}>
-              {recommendationLabels[review.recommendation]}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-muted-foreground mb-1">Confidence</p>
-            <p className={cn('text-2xl font-bold', confidenceColor(review.confidenceScore))}>
-              {review.confidenceScore}%
-            </p>
-          </div>
-        </div>
-        {/* Confidence Bar */}
-        <div className="mt-3 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-          <div
-            className={cn('h-2 rounded-full transition-all duration-500', confidenceBarColor(review.confidenceScore))}
-            style={{ width: `${review.confidenceScore}%` }}
-          />
-        </div>
-      </div>
-
       <ResolutionSummary review={review} />
       <ComputedRouteAnalysis c={c} />
       <PartyNoticesCard c={c} />
 
-      {/* Summary */}
+      {/* Summary + Key issues */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
@@ -172,6 +149,7 @@ function AIReviewContent({ c, review }: { c: DisputeCase; review: AIReview }) {
           </ul>
         </CardContent>
       </Card>
+      </div>
 
       {/* Analysis: Driver vs Passenger */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -216,25 +194,7 @@ function AIReviewContent({ c, review }: { c: DisputeCase; review: AIReview }) {
       <JudgeChecklist review={review} />
       <JudgeSources review={review} />
 
-      {/* Policy References */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-muted-foreground" />
-            <CardTitle className="text-base">Applicable policy</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
-            {review.policyReferences.map((policy, i) => (
-              <Badge key={i} variant="secondary" className="text-xs">
-                {policy}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
       {/* Recommendation Reasoning */}
       <Card>
         <CardHeader className="pb-3">
@@ -261,6 +221,25 @@ function AIReviewContent({ c, review }: { c: DisputeCase; review: AIReview }) {
         </CardContent>
       </Card>
 
+      {/* Policy References */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-muted-foreground" />
+            <CardTitle className="text-base">Applicable policy</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-2">
+            {review.policyReferences.map((policy, i) => (
+              <Badge key={i} variant="secondary" className="text-xs">
+                {policy}
+              </Badge>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Suggested Actions */}
       <Card>
         <CardHeader className="pb-3">
@@ -280,6 +259,7 @@ function AIReviewContent({ c, review }: { c: DisputeCase; review: AIReview }) {
           </ol>
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
@@ -289,6 +269,8 @@ export default function CaseDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // null = follow the default: the ruling once a review exists, otherwise the case overview
+  const [tab, setTab] = useState<string | null>(null);
 
   const { data: caseData, isLoading, isError, error } = useQuery({
     queryKey: ['dispute', id],
@@ -367,114 +349,74 @@ export default function CaseDetail() {
   }
 
   const c: DisputeCase = caseData;
+  const review = c.review;
+  const activeTab = tab ?? (review ? 'ruling' : 'overview');
+  const recColor = review ? recommendationColor(review.recommendation) : null;
+  const needsHuman = !!c.escalation?.needsHuman && !c.humanOverride;
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       {/* Breadcrumb */}
       <button
         onClick={() => navigate('/')}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+        className="group mb-4 inline-flex items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-3.5 text-xs font-medium text-muted-foreground shadow-xs transition-colors hover:border-primary/30 hover:bg-accent hover:text-accent-foreground"
       >
-        <ArrowLeft className="w-3.5 h-3.5" />
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-card">
+          <ArrowLeft className="h-3.5 w-3.5" />
+        </span>
         Back to cases
       </button>
 
-      {/* Case Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="font-mono text-sm text-muted-foreground">{c.caseNumber}</span>
-          <Badge variant="outline" className={statusBadgeClass(c.status)}>
-            {statusLabels[c.status]}
-          </Badge>
-          <Badge variant="outline" className={priorityBadgeClass(c.priority)}>
-            {priorityLabels[c.priority]}
-          </Badge>
-          <Badge variant="outline">{typeLabels[c.type]}</Badge>
-        </div>
-        <h1 className="text-2xl font-bold">{c.title}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Created: {formatDateTime(c.createdAt)}
-        </p>
-      </div>
-
-      {/* Driver vs Passenger */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <PartyCard title="Driver" party={c.driver} icon={Car} />
-        <PartyCard title="Rider" party={c.passenger} icon={User} />
-      </div>
-
-      {/* Trip Details */}
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Trip information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <TripDetail icon={MapPin} label="Pickup" value={c.trip.pickupLocation} />
-            <TripDetail icon={MapPin} label="Drop-off" value={c.trip.dropoffLocation} />
-            <TripDetail icon={Clock} label="Pickup time" value={formatDateTime(c.trip.pickupTime)} />
-            <TripDetail icon={Clock} label="Drop-off time" value={formatDateTime(c.trip.dropoffTime)} />
-            <TripDetail icon={DollarSign} label="Fare" value={formatFare(c.trip.fare, c.trip.currency)} />
-            <TripDetail icon={RouteIcon} label="Distance" value={`${c.trip.distance} km`} />
-            <TripDetail icon={Car} label="Vehicle" value={c.trip.vehicleModel} />
-            <TripDetail icon={Car} label="Licence plate" value={c.trip.plateNumber} />
+      {/* Case header: identity on the left, verdict and actions on the right */}
+      <div className="mb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <span className="font-mono text-sm text-muted-foreground">{c.caseNumber}</span>
+            <Badge variant="outline" className={statusBadgeClass(c.status)}>
+              {statusLabels[c.status]}
+            </Badge>
+            <Badge variant="outline" className={priorityBadgeClass(c.priority)}>
+              {priorityLabels[c.priority]}
+            </Badge>
+            <Badge variant="outline">{typeLabels[c.type]}</Badge>
           </div>
-        </CardContent>
-      </Card>
+          <h1 className="text-2xl font-bold leading-snug">{c.title}</h1>
+          <p className="text-sm text-muted-foreground mt-1">Created: {formatDateTime(c.createdAt)}</p>
+        </div>
 
-      {/* Evidence */}
-      <Card className="mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Evidence</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <EvidenceList items={c.evidence} />
-          <EvidenceForm
-            onAdd={(evidence) => evidenceMutation.mutate(evidence)}
-            pending={evidenceMutation.isPending}
-          />
-        </CardContent>
-      </Card>
-
-      {c.dataset != null && (
-        <p className="text-xs text-muted-foreground mb-4">
-          This case was imported from a sample dataset. The AI reviews the original dataset; evidence added afterward is not included in that review.
-        </p>
-      )}
-
-      {/* Multi-agent process (re-review also works for reviews from the old single-agent flow) */}
-      {c.review && !reviewMutation.isPending && (
-        <>
-          <div className="flex justify-end mb-2">
+        {review && recColor && !reviewMutation.isPending && (
+          <div className={cn('shrink-0 rounded-lg border px-5 py-3 lg:min-w-64', recColor.bg)}>
+            <div className="flex items-end justify-between gap-6">
+              <div>
+                <p className="text-xs text-muted-foreground">AI recommendation</p>
+                <p className={cn('text-lg font-bold leading-tight', recColor.text)}>
+                  {recommendationLabels[review.recommendation]}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-muted-foreground">Confidence</p>
+                <p className={cn('text-lg font-bold leading-tight', confidenceColor(review.confidenceScore))}>
+                  {review.confidenceScore}%
+                </p>
+              </div>
+            </div>
             <Button
               variant="outline"
               size="sm"
+              className="mt-3 w-full bg-background"
               onClick={() => reviewMutation.mutate()}
             >
               <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
               Run review again
             </Button>
           </div>
-          <FallbackNotice review={c.review} />
-          <AgentTranscript review={c.review} />
-        </>
-      )}
+        )}
+      </div>
 
-      {/* A human may decide any case; escalated cases open this panel automatically. */}
-      {!reviewMutation.isPending && (
-        <HumanDecisionPanel
-          key={`${c.humanOverride?.decidedAt ?? 'none'}-${c.escalation?.needsHuman ?? false}`}
-          c={c}
-          pending={overrideMutation.isPending || withdrawMutation.isPending}
-          onSubmit={(decision) => overrideMutation.mutateAsync(decision)}
-          onWithdraw={() => withdrawMutation.mutate()}
-        />
-      )}
-
-      {/* AI Review Section */}
-      {reviewMutation.isPending ? (
-        <Card>
-          <CardContent className="py-16">
+      {/* Review in progress */}
+      {reviewMutation.isPending && (
+        <Card className="mb-6">
+          <CardContent className="py-12">
             <div className="flex flex-col items-center">
               <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
               <p className="font-medium">AI agents are reviewing this dispute</p>
@@ -484,19 +426,22 @@ export default function CaseDetail() {
             </div>
           </CardContent>
         </Card>
-      ) : c.review ? (
-        <AIReviewContent c={c} review={c.review} />
-      ) : (
-        <Card className="border-dashed border-2">
-          <CardContent className="py-16">
-            <div className="flex flex-col items-center">
-              <div className="flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Scale className="w-8 h-8 text-primary" />
+      )}
+
+      {/* No review yet */}
+      {!review && !reviewMutation.isPending && (
+        <Card className="mb-6 border-dashed border-2">
+          <CardContent className="py-8">
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              <div className="flex items-center justify-center w-14 h-14 shrink-0 rounded-full bg-primary/10">
+                <Scale className="w-7 h-7 text-primary" />
               </div>
-              <p className="font-medium text-lg mb-1">This case has not been reviewed by AI</p>
-              <p className="text-sm text-muted-foreground mb-5 max-w-md text-center">
-                The agents analyze both accounts, cross-check the evidence, apply platform policy, and provide a recommendation with a confidence score.
-              </p>
+              <div className="flex-1 text-center sm:text-left">
+                <p className="font-medium text-lg">This case has not been reviewed by AI</p>
+                <p className="text-sm text-muted-foreground mt-1 max-w-xl">
+                  The agents analyze both accounts, cross-check the evidence, apply platform policy, and provide a recommendation with a confidence score.
+                </p>
+              </div>
               <Button size="lg" onClick={() => reviewMutation.mutate()}>
                 <Scale className="w-4 h-4 mr-2" />
                 Start AI review
@@ -505,6 +450,97 @@ export default function CaseDetail() {
           </CardContent>
         </Card>
       )}
+
+      <Tabs value={activeTab} onValueChange={setTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="overview" className="gap-1.5">
+            <FolderOpen className="w-3.5 h-3.5" />
+            Case and evidence
+          </TabsTrigger>
+          {review && (
+            <TabsTrigger value="agents" className="gap-1.5">
+              <Workflow className="w-3.5 h-3.5" />
+              Agent process
+            </TabsTrigger>
+          )}
+          {review && (
+            <TabsTrigger value="ruling" className="gap-1.5">
+              <Gavel className="w-3.5 h-3.5" />
+              Ruling
+              {needsHuman && <span className="w-2 h-2 rounded-full bg-amber-500" aria-label="Needs human decision" />}
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        {/* Case and evidence */}
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <PartyCard title="Driver" party={c.driver} icon={Car} />
+            <PartyCard title="Rider" party={c.passenger} icon={User} />
+          </div>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Trip information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <TripDetail icon={MapPin} label="Pickup" value={c.trip.pickupLocation} />
+                <TripDetail icon={MapPin} label="Drop-off" value={c.trip.dropoffLocation} />
+                <TripDetail icon={Clock} label="Pickup time" value={formatDateTime(c.trip.pickupTime)} />
+                <TripDetail icon={Clock} label="Drop-off time" value={formatDateTime(c.trip.dropoffTime)} />
+                <TripDetail icon={DollarSign} label="Fare" value={formatFare(c.trip.fare, c.trip.currency)} />
+                <TripDetail icon={RouteIcon} label="Distance" value={`${c.trip.distance} km`} />
+                <TripDetail icon={Car} label="Vehicle" value={c.trip.vehicleModel} />
+                <TripDetail icon={Car} label="Licence plate" value={c.trip.plateNumber} />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Evidence</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <EvidenceList items={c.evidence} />
+              <EvidenceForm
+                onAdd={(evidence) => evidenceMutation.mutate(evidence)}
+                pending={evidenceMutation.isPending}
+              />
+            </CardContent>
+          </Card>
+
+          {c.dataset != null && (
+            <p className="text-xs text-muted-foreground">
+              This case was imported from a sample dataset. The AI reviews the original dataset; evidence added afterward is not included in that review.
+            </p>
+          )}
+        </TabsContent>
+
+        {/* Agent process (re-review also works for reviews from the old single-agent flow) */}
+        {review && (
+          <TabsContent value="agents" className="space-y-4">
+            <FallbackNotice review={review} />
+            <AgentTranscript review={review} />
+          </TabsContent>
+        )}
+
+        {/* Ruling: a human may decide any case; escalated cases open the panel automatically. */}
+        {review && (
+          <TabsContent value="ruling" className="space-y-4">
+            {!reviewMutation.isPending && (
+              <HumanDecisionPanel
+                key={`${c.humanOverride?.decidedAt ?? 'none'}-${c.escalation?.needsHuman ?? false}`}
+                c={c}
+                pending={overrideMutation.isPending || withdrawMutation.isPending}
+                onSubmit={(decision) => overrideMutation.mutateAsync(decision)}
+                onWithdraw={() => withdrawMutation.mutate()}
+              />
+            )}
+            <AIReviewContent c={c} review={review} />
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }
