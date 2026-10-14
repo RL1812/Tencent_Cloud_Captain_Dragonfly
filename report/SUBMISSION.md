@@ -288,7 +288,7 @@ All claims below are supported by the repository or handbook. No results are inv
 
 7. **Human Decision** — The reviewer reviews the full agent transcript (both advocates' submissions, the Judge's checklist with conflict flags, the resolution attempt, and the escalation reason), then decides the case. If the reviewer upholds the cancellation charge (as the sample dataset's expected ruling suggests) and marks "use as precedent", the decision is saved to `backend/data/precedents.json` and the Judge will see it as a calibration example the next time it reviews a no-show case.
 
-**Run-to-run variation.** Model output is not deterministic. In our first test run the Judge returned *Inconclusive* at 60% confidence (resolution "No action — charge stands") and the case was escalated to a human reviewer. In a later run (screenshot `proof/screenshots/05-app-disp002-no-show-full-page.png`) the Judge ruled for the driver without escalation and the case was resolved. Both outcomes leave the SGD 5.00 fee with the driver; what changes is whether a human is asked to confirm. A reviewer can also decide any case manually at any time, so the human-decision flow can always be shown.
+**Run-to-run variation.** Model output is not deterministic. In our first test run the Judge returned *Inconclusive* at 60% confidence (resolution "No action — charge stands") and the case was escalated to a human reviewer. In a later run (screenshots `proof/screenshots/07-…`, `08-…`, `09-…`) the Judge ruled for the driver without escalation and the case was resolved. Both outcomes leave the SGD 5.00 fee with the driver; what changes is whether a human is asked to confirm. A reviewer can also decide any case manually at any time, so the human-decision flow can always be shown.
 
 ---
 
@@ -299,7 +299,7 @@ All claims below are supported by the repository or handbook. No results are inv
 | Tool | Used for | Evidence |
 |---|---|---|
 | **Claude Code (Anthropic)** | Initial per-party evidence model, file upload, agent-process UI, human escalation and override, dataset import (later extended by teammates: English localisation, AgentReview.tsx, precedents page) | Commit `a5aad2d` (co-authored by Claude); conversation transcript in `proof/` |
-| **TO CONFIRM** (teammates' tool) | Core agents (Rider Advocate, Driver Advocate, Judge, orchestrator, checklist, route analysis, dataset validation, escalation, evidence validation, prioritization, learning feedback, precedents) | TO CONFIRM |
+| **WorkBuddy and CodeBuddy** (teammates), assisted by **GPT, Gemini, Codex and Claude** | Core agents (Rider Advocate, Driver Advocate, Judge, orchestrator, checklist, route analysis, dataset validation, escalation, evidence validation, prioritization, learning feedback, precedents) | Git history; WorkBuddy and CodeBuddy proof in `proof/` |
 | **CodeBuddy / WorkBuddy** | Code review (commit `7997e7e`), this submission report, and other items in `workbuddy-session-plan.md` | Git log: `7997e7e Handle edge cases in dispute agents and store from CodeBuddy review`; `workbuddy-session-plan.md`; proof screenshots in `proof/` |
 
 ### Runtime models
@@ -318,7 +318,8 @@ Per `workbuddy-session-plan.md`, WorkBuddy/CodeBuddy was used for:
 6. **Stretch goal (if credits remained)** — adding a Fraud & Bad-Faith Detection agent.
 
 Proof of usage is collected in `proof/`:
-- `screencapture-workbuddy-ai-app-task-2100073428441546752-2026-10-14-10_57_47.pdf` — screenshot of a WorkBuddy session
+- `screenshots/screencapture-workbuddy-ai-app-task-2100073428441546752-2026-10-14-10_57_47.pdf` — screenshot of a WorkBuddy session
+- `screenshots/01-codebuddy-write-report.png`, `screenshots/02-codebuddy-fix-report.png` — CodeBuddy sessions
 - `Review the recent changes in dispute-review-agent_backend_src_modules_dispute_ag_20261014115706.json` — exported chat history of the code review session
 
 ### Git history highlights
@@ -334,7 +335,7 @@ Proof of usage is collected in `proof/`:
 ### What was built by whom
 
 - **Web application (initial frontend + backend features):** Built using Claude Code (Anthropic). This includes the initial per-party evidence model, file upload, agent-process UI, human escalation and override, and dataset import. Teammates later extended these with English localisation, `AgentReview.tsx`, and the precedents page.
-- **Core agents:** Written by teammates using a tool that is **TO CONFIRM**. This includes the LangGraph orchestrator, Rider Advocate, Driver Advocate, Judge (with checklist and resolution capping), Prioritization Agent, Evidence Validation Agent, Escalation Agent, Learning Feedback Agent, Route Analysis, dataset validation, and the precedent store.
+- **Core agents:** Written by teammates using WorkBuddy and CodeBuddy, with GPT, Gemini, Codex and Claude as assistants. This includes the LangGraph orchestrator, Rider Advocate, Driver Advocate, Judge (with checklist and resolution capping), Prioritization Agent, Evidence Validation Agent, Escalation Agent, Learning Feedback Agent, Route Analysis, dataset validation, and the precedent store.
 - **Code review, localization, architecture documentation, this report, and demo script:** Done with CodeBuddy/WorkBuddy.
 
 ---
@@ -407,9 +408,9 @@ Items marked **TO ADD** depend on teammates or on final screenshots and are inte
 | Architecture diagram | Done | `report/architecture.png` (also embedded in Section 4.2) |
 | Cover image, 16:9 | Done | `report/cover/cover-380x216.png` (1520×855 master alongside) |
 | Source code | Done | GitHub repository, `main` branch |
-| Which tool wrote the core agents | **TO CONFIRM** | Section 7 (waiting for teammates) |
-| CodeBuddy / WorkBuddy conversation history | **TO ADD** | `proof/` (export from the CodeBuddy app after the last session) |
-| At least 3 chat screenshots from CodeBuddy / WorkBuddy | **TO ADD** | `proof/`; one WorkBuddy screenshot (PDF) is already there |
-| Application screenshots | Partly done: full-page captures of DISP-003 (auto-resolved, S$12.40 refund) and DISP-002 (no-show). **TO ADD:** the human-decision form and the precedents page | `proof/screenshots/04-…`, `05-…` |
+| Which tool wrote the core agents | Done: WorkBuddy and CodeBuddy, assisted by GPT, Gemini, Codex and Claude (as stated by the team) | Section 7 |
+| CodeBuddy / WorkBuddy conversation history | Done: exported CodeBuddy chat (code-review session) | `proof/Review the recent changes in …json` |
+| At least 3 chat screenshots from CodeBuddy / WorkBuddy | Done: two CodeBuddy screenshots and one WorkBuddy page capture (PDF) | `proof/screenshots/` |
+| Application screenshots | Done: DISP-003 (auto-resolved, S$12.40 refund) and DISP-002 (no-show) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard sorted by priority; the submit page | `proof/screenshots/04-…` to `12-…` |
 | Demo video, 5–8 minutes (optional) | **TO ADD** | — |
 | Live project link (optional, earns bonus points) | **TO ADD** | — |
