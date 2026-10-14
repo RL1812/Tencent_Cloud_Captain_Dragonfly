@@ -134,6 +134,11 @@ export function EvidenceForm({
     }
   }
 
+  function clearFile() {
+    setFile(null);
+    if (fileInput.current) fileInput.current.value = '';
+  }
+
   async function handleAdd() {
     let attachment: Pick<NewEvidence, 'fileName' | 'fileUrl' | 'mimeType'> = {};
     if (file) {
@@ -214,12 +219,26 @@ export function EvidenceForm({
       </div>
       <div>
         <Label>Attachment (photo, PDF, etc.; optional)</Label>
-        <input
-          ref={fileInput}
-          type="file"
-          onChange={handleFileChange}
-          className="mt-1.5 block w-full cursor-pointer rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-xs file:mr-3 file:border-0 file:bg-transparent file:text-sm file:font-medium"
-        />
+        {/* Custom control: the browser's native file input is labelled in the OS language */}
+        <div className="mt-1.5 flex items-center gap-3 rounded-md border border-input px-3 py-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInput.current?.click()}
+          >
+            Choose file
+          </Button>
+          <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+            {file ? file.name : 'No file chosen'}
+          </span>
+          {file && (
+            <Button type="button" variant="ghost" size="sm" onClick={clearFile}>
+              Remove
+            </Button>
+          )}
+          <input ref={fileInput} type="file" className="hidden" onChange={handleFileChange} />
+        </div>
       </div>
       <Button
         type="button"
