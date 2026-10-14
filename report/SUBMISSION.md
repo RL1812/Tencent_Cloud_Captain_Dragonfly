@@ -411,6 +411,6 @@ Items marked **TO ADD** depend on teammates or on final screenshots and are inte
 | Which tool wrote the core agents | Done: WorkBuddy and CodeBuddy, assisted by GPT, Gemini, Codex and Claude (as stated by the team) | Section 7 |
 | CodeBuddy / WorkBuddy conversation history | Done: exported CodeBuddy chat (code-review session) | `proof/Review the recent changes in …json` |
 | At least 3 chat screenshots from CodeBuddy / WorkBuddy | Done: two CodeBuddy screenshots and one WorkBuddy page capture (PDF) | `proof/screenshots/` |
-| Application screenshots | Done: DISP-003 (auto-resolved, S$12.40 refund) and DISP-002 (no-show) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard sorted by priority; the submit page | `proof/screenshots/04-…` to `12-…` |
+| Application screenshots | Done: DISP-003 (auto-resolved, S$12.40 refund) and DISP-002 (no-show) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard (review queue, and sorted by priority); the submit page | `proof/screenshots/04-…` to `13-…` |
 | Demo video, 5–8 minutes (optional) | **TO ADD** | — |
 | Live project link (optional, earns bonus points) | **TO ADD** | — |
