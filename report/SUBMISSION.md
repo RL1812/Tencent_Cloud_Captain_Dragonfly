@@ -330,3 +330,59 @@ Proof of usage is collected in `proof/`:
 - **Web application (initial frontend + backend features):** Built using Claude Code (Anthropic). This includes the initial per-party evidence model, file upload, agent-process UI, human escalation and override, and dataset import. Teammates later extended these with English localisation, `AgentReview.tsx`, and the precedents page.
 - **Core agents:** Written by teammates using a tool that is **TO CONFIRM**. This includes the LangGraph orchestrator, Rider Advocate, Driver Advocate, Judge (with checklist and resolution capping), Prioritization Agent, Evidence Validation Agent, Escalation Agent, Learning Feedback Agent, Route Analysis, dataset validation, and the precedent store.
 - **Code review, localization, architecture documentation, this report, and demo script:** Done with CodeBuddy/WorkBuddy.
+
+---
+
+## 8. Responsible AI and Human Oversight
+
+Every point below is implemented in the repository; the source is given in brackets.
+
+| Principle | How the system implements it |
+|---|---|
+| **A human can always decide** | A reviewer can decide any case at any time, whether or not the AI has reviewed it. The decision can be revised or withdrawn, takes priority over the AI, and is not overturned by a re-review. [`docs/product/features.md`; `POST/DELETE /api/disputes/:id/override`] |
+| **Low confidence goes to a person** | The case is escalated when the Judge's confidence is below 60% or the ruling is inconclusive. [`escalation-agent.ts`] |
+| **Nothing is sent before a human decides** | For escalated cases the plain-language notices to the rider and the driver are shown as drafts ("Draft — held until a human reviewer decides"). After a human decision, the AI's draft is marked "Superseded by the human decision — rewrite before sending". Only notices for cases where the AI ruling stands are marked "Ready to send". [`PartyNoticesCard` in `AgentReview.tsx`] |
+| **No automatic money movement** | A resolution is a recommendation stored on the case. The codebase contains no payment integration. [searched `backend/src`] |
+| **Bounded outcomes** | A refund cannot exceed the disputed charge; compensation is capped at 2× the charge; an inconclusive ruling cannot move money. [`judge.ts`] |
+| **Evidence must be real** | Every citation is a JSON-pointer path checked against the original record. A citation to a record that does not exist is rejected. [`shared.ts`] |
+| **Untrusted input** | Case text and the advocates' arguments are treated as untrusted evidence, never as instructions. [`evidenceInstructions` in `shared.ts`] |
+| **No hidden tie-breaker** | If an advocate's output is unavailable or invalid, the Judge is skipped and the result is inconclusive with confidence 0. No fallback picks a winner from ratings or statement length. [`agents/README.md`; `judge.ts`] |
+| **Context is not proof** | Ratings, account age, dispute history and fraud flags are context, not proof of fault on this trip. [prompt rules in `shared.ts`] |
+| **Same information for both sides** | The Rider Advocate and the Driver Advocate receive the same full record. [`orchestrator.ts`] |
+| **Explainable output** | The interface shows both advocates' cases, the Judge's checklist with source conflicts, the cited records, the missing evidence, the structured resolution and the confidence reasoning. |
+| **Learning without retraining** | Human decisions that a reviewer marks as precedent calibrate how the Judge applies policy. Precedents are never evidence, and a case never sees its own earlier decision. Reviewers can delete precedents on the Precedents page. This is retrieval feedback, not model fine-tuning. [`precedents.ts`; `DELETE /api/disputes/precedents/:caseNumber`] |
+
+---
+
+## 9. Limitations and Next Steps
+
+This is a hackathon prototype. The limits below are stated plainly so that the demonstration is not misread.
+
+- **Cases are stored in memory.** They reset when the backend restarts. Precedents are saved to `backend/data/precedents.json` and uploaded files are stored on disk.
+- **No sign-in or roles.** Anyone who can open the application can act as a reviewer. A production system needs authentication and role separation.
+- **Structured datasets exist for two dispute types.** Route deviation (DISP-003) and no-show charge (DISP-002) have sample datasets and tests. Property damage and safety accident are in the data model and have Judge checklists, but no sample dataset yet.
+- **Uploaded photos and PDFs are stored and shown, but the agents do not read their contents.** Image analysis is a handbook stretch goal and is not implemented. Uploaded files appear as evidence in the case view only.
+- **The knowledge base is optional.** PostgreSQL with pgvector and Ollama are needed for document parsing, OCR and retrieval. When the knowledge base is offline, the dispute review still works and a human decision stays saved in the case record.
+- **Model quota limits throughput.** The Gemini free tier allows about 20 requests per model per day and one review makes three model calls, so a review takes 15 seconds to about 3 minutes and repeated reviews can hit the limit. The provider can be switched to Tencent TokenHub with `LLM_PROVIDER`.
+- **Single market.** The sample datasets are Singapore trips in SGD.
+- **Confidence is an assessment, not a calibrated probability.** The 60% escalation threshold is a design choice that should be tuned on real labelled cases.
+
+**Testing.** The backend has 82 automated tests (agents, route-deviation analysis, no-show fixtures, knowledge base and system routes), and all pass at the time of writing (14 October 2026).
+
+**Next steps:** authentication and a persistent case store; sample datasets for property damage and safety incidents; image analysis for damage photos; connecting uploaded documents to the knowledge base; threshold tuning on real cases; and a Fraud and Bad-Faith Detection agent that passes risk signals to the Judge as context.
+
+---
+
+## 10. Where This Addresses the Judging Criteria
+
+| Criterion (handbook) | Where to look |
+|---|---|
+| Impact and relevance | Section 3: the Ryde challenge (24–72 h resolution, inconsistent rulings, cost, churn). |
+| Human-centered design | Plain-language notices to both parties; a reviewer interface with a full audit trail; the human-decision flow (Section 8). |
+| AI interaction | Three-stage multi-agent reasoning with a mandatory checklist and structured output (Section 4). |
+| Technical execution | LangGraph workflow, validated citations, bounded resolutions, 82 passing tests (Sections 4 and 9). |
+| Feasibility | Runs on a free model tier or Tencent TokenHub; the limits and next steps are stated (Section 9). |
+| Demo and storytelling | Two contrasting cases: an automatic resolution (DISP-003) and an escalation to a human (DISP-002) (Section 6). |
+| Innovation and creativity | Precedent calibration from human decisions; deterministic route analysis so agents cite measured numbers; no tie-breaker fallback. |
+| User experience | A React interface built on shadcn/ui and Radix UI components, with the agent transcript, checklist and resolution on one case page. |
+| Responsible AI and ethics | Section 8. |
