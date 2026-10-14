@@ -257,7 +257,7 @@ All claims below are supported by the repository or handbook. No results are inv
 
 6. **Escalation Agent** — The Judge's confidence is ≥ 60% and the recommendation is not inconclusive, so the case is **auto-resolved** (`workflowStatus = auto_resolved`, `status = resolved`).
 
-### Demo 2: DISP-002 — No-Show Charge (Escalated to Human)
+### Demo 2: DISP-002 — No-Show Charge (Ambiguous Case; May Escalate to a Human)
 
 **Case:** Rider Michael Wong (R-7823) disputes a S$5.00 cancellation fee on a trip from Tiong Bahru Plaza to VivoCity. The rider claims to have been at the pickup point on time but the driver never showed up. Driver Lim Wei Ming arrived at 08:43, waited, attempted contact (1 call + 4 messages with no rider response), and cancelled at 08:51 for rider no-show. The rider has 1 fraud flag for frequent late cancellations and 3 of 4 prior disputes rejected.
 
@@ -287,6 +287,8 @@ All claims below are supported by the repository or handbook. No results are inv
 6. **Escalation Agent** — The Judge's recommendation is inconclusive, so the case is **escalated to a human reviewer** (`workflowStatus = human_intervention_required`, `status = under_review`, `escalation.needsHuman = true`).
 
 7. **Human Decision** — The reviewer reviews the full agent transcript (both advocates' submissions, the Judge's checklist with conflict flags, the resolution attempt, and the escalation reason), then decides the case. If the reviewer upholds the cancellation charge (as the sample dataset's expected ruling suggests) and marks "use as precedent", the decision is saved to `backend/data/precedents.json` and the Judge will see it as a calibration example the next time it reviews a no-show case.
+
+**Run-to-run variation.** Model output is not deterministic. In our first test run the Judge returned *Inconclusive* at 60% confidence (resolution "No action — charge stands") and the case was escalated to a human reviewer. In a later run (screenshot `proof/screenshots/05-app-disp002-no-show-full-page.png`) the Judge ruled for the driver without escalation and the case was resolved. Both outcomes leave the SGD 5.00 fee with the driver; what changes is whether a human is asked to confirm. A reviewer can also decide any case manually at any time, so the human-decision flow can always be shown.
 
 ---
 
@@ -386,7 +388,7 @@ This is a hackathon prototype. The limits below are stated plainly so that the d
 | AI interaction | Three-stage multi-agent reasoning with a mandatory checklist and structured output (Section 4). |
 | Technical execution | LangGraph workflow, validated citations, bounded resolutions, 82 passing tests (Sections 4 and 9). |
 | Feasibility | Runs on a free model tier or Tencent TokenHub; the limits and next steps are stated (Section 9). |
-| Demo and storytelling | Two contrasting cases: an automatic resolution (DISP-003) and an escalation to a human (DISP-002) (Section 6). |
+| Demo and storytelling | Two contrasting cases: a clear-cut automatic resolution (DISP-003) and an ambiguous no-show that can escalate to a human reviewer (DISP-002) (Section 6). |
 | Innovation and creativity | Precedent calibration from human decisions; deterministic route analysis so agents cite measured numbers; no tie-breaker fallback. |
 | User experience | A React interface built on shadcn/ui and Radix UI components, with the agent transcript, checklist and resolution on one case page. |
 | Responsible AI and ethics | Section 8. |
@@ -408,6 +410,6 @@ Items marked **TO ADD** depend on teammates or on final screenshots and are inte
 | Which tool wrote the core agents | **TO CONFIRM** | Section 7 (waiting for teammates) |
 | CodeBuddy / WorkBuddy conversation history | **TO ADD** | `proof/` (export from the CodeBuddy app after the last session) |
 | At least 3 chat screenshots from CodeBuddy / WorkBuddy | **TO ADD** | `proof/`; one WorkBuddy screenshot (PDF) is already there |
-| Application screenshots (DISP-003 auto-resolution, DISP-002 escalation) | **TO ADD** | `proof/screenshots/` |
+| Application screenshots | Partly done: full-page captures of DISP-003 (auto-resolved, S$12.40 refund) and DISP-002 (no-show). **TO ADD:** the human-decision form and the precedents page | `proof/screenshots/04-…`, `05-…` |
 | Demo video, 5–8 minutes (optional) | **TO ADD** | — |
 | Live project link (optional, earns bonus points) | **TO ADD** | — |
