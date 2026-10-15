@@ -2,6 +2,8 @@
 
 **Fair, fast, explainable ride-hailing dispute resolution by multi-agent AI.**
 
+**Live application:** [Open RydeResolve](https://e411b34da14b46aeb1c115f80d4063e5.sg2.agentos-app.run/)
+
 ---
 
 ## 1. Project Title and Blurb
