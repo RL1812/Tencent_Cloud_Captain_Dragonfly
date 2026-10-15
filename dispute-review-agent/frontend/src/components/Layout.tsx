@@ -3,7 +3,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FilePlus } from 'lucide-react';
+import { LayoutDashboard, FilePlus, BookMarked } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -13,6 +13,7 @@ interface LayoutProps {
 const navItems = [
   { to: '/', label: 'Case dashboard', icon: LayoutDashboard },
   { to: '/submit', label: 'Submit a case', icon: FilePlus },
+  { to: '/precedents', label: 'Precedents', icon: BookMarked },
 ];
 
 export function Layout({ children }: LayoutProps) {
