@@ -3,3 +3,6 @@ appengine-generated/
 
 # Local planning notes, not part of the submission
 workbuddy-session-plan.md
+
+# macOS folder metadata
+.DS_Store
