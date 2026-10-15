@@ -27,7 +27,7 @@ flowchart LR
         UP["/uploads<br/>evidence files"]
         KB["/knowledge<br/>documents, records, search, ask"]
         STORE[("Case store<br/>in memory")]
-        ORCH["Agent orchestrator<br/>Rider Advocate · Driver Advocate · Judge"]
+        ORCH["Agent orchestrator<br/>Rider Advocate · Driver Advocate ·<br/>fraud detection · Judge"]
         PSTORE[("Precedent store<br/>data/precedents.json")]
         LLM["LLM client<br/>lib/llm-chat.ts"]
         ING["Ingest pipeline<br/>parse → OCR → chunk → embed"]
@@ -58,15 +58,15 @@ flowchart LR
 
 | Component | Where | What it does |
 |---|---|---|
-| Dashboard / Submit / Case detail | `frontend/src/pages/` | Pages for listing cases, creating one (by form or by importing the DISP-002 no-show or DISP-003 route-deviation dataset) and reviewing it |
+| Dashboard / Submit / Case detail | `frontend/src/pages/` | Pages for listing cases, creating one (by form, by loading the DISP-002 no-show or DISP-003 route-deviation sample, or from a dataset file such as those in `reference/`) and reviewing it |
 | Agent review UI | `frontend/src/components/AgentReview.tsx` | Both advocates' submissions, the Judge's checklist and cited sources, the precedents it used, and the human judge panel |
 | Precedents page | `frontend/src/pages/Precedents.tsx` | Lists the human decisions the AI Judge learns from; reviewers can delete any of them |
 | Dispute routes + case store | `backend/src/modules/dispute/` | Case CRUD, evidence, review and human override; cases live **in memory** and reset on restart |
-| Agents | `backend/src/modules/dispute/agents/` | Rider Advocate and Driver Advocate in parallel, then the Judge; every output is schema-checked and its citations verified. The Judge must answer a checklist for the dispute type (`checklist.ts`) |
+| Agents | `backend/src/modules/dispute/agents/` | Prioritization and evidence validation, then the Rider Advocate, Driver Advocate and fraud/bad-faith detection in parallel, then the Judge and escalation; every model output is schema-checked and its citations verified. The Judge must answer a checklist for the dispute type (`checklist.ts`) |
 | Precedent store | `backend/src/modules/dispute/precedents.ts` | Human decisions marked "use as precedent", saved to `backend/data/precedents.json` so they survive restarts |
 | LLM client | `backend/src/lib/llm-chat.ts` | Gemini free tier (`gemini-3.8-flash`, then fallback models), or TokenHub when no Gemini key is set |
 | Evidence uploads | `backend/src/modules/dispute/uploads.ts` | Stores photos and PDFs attached to evidence. The agents see the file name, not the file contents |
-| Knowledge base | `backend/src/modules/knowledge/` | Parses, embeds and searches documents and company records, and answers questions with citations using local models. **API only**: it is not used by the agents and has no page in the UI yet |
+| Knowledge base | `backend/src/modules/knowledge/` | Parses, embeds and searches documents and company records, and answers questions with citations using local models. Human decisions are also indexed here. **API only**: the agents do not read it and it has no page in the UI yet |
 
 ## How a dispute review works
 
@@ -96,7 +96,9 @@ flowchart TD
         DRIVER["Driver Advocate<br/>argues the driver's case"]
     end
 
-    ADV["Fan out to<br/>both advocates"] --> RIDER & DRIVER
+    FRAUD["Fraud & bad-faith detection<br/>(deterministic, no LLM)<br/>risk flags, dispute history, account age"]
+
+    ADV["Fan out"] --> RIDER & DRIVER & FRAUD
     RIDER & DRIVER -.- M["LLM client: gemini-3.8-flash<br/>→ gemini-3.1-flash-lite → gemini-3.5-flash<br/>(on error, quota, stall or timeout)"]
 
     RIDER --> RV{"Schema valid,<br/>sourceRefs exist?"}
@@ -119,6 +121,7 @@ flowchart TD
     end
 
     PREC -- "calibrate standards" --> JUDGE
+    FRAUD -. "risk context, never evidence" .-> JUDGE
     JUDGE --> CL --> RES --> PNOT
 
     PNOT --> JV{"Schema valid, sourceRefs exist,<br/>every checklist item answered,<br/>resolution within cap?"}
@@ -148,7 +151,10 @@ flowchart TD
     HUMAN --> LEARN
 ```
 
-The two advocates run in parallel and each sees the full record (including
+The two advocates and the fraud/bad-faith detector run in parallel. The detector makes no model
+call: it turns account risk flags, dispute history and account age into risk signals that the
+Judge sees as context, never as evidence, so a review still makes three model calls. The advocates
+each see the full record (including
 `computed_route_analysis` for route-deviation cases). The Judge only runs when both
 produced validated output, and no fallback ever picks a winner. The route-analysis step is
 deterministic — it computes haversine distances, off-route points, unexpected stops, and

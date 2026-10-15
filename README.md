@@ -17,13 +17,14 @@ A reviewer submits a case (or imports a dataset) with evidence from the driver, 
 1. **Prioritization Agent** assigns a priority and a response-time target.
 2. **Evidence Validation Agent** checks the record and computes route measurements (distance, off-route points, unexpected stops, fare arithmetic) with ordinary code, so the agents cite measured numbers instead of guessing.
 3. **Rider Advocate** and **Driver Advocate** run in parallel. Each argues one side from the same record and cites exact evidence paths.
-4. **Judge** must answer a mandatory checklist, then rules with a structured resolution (action, amount, recipient) and plain-language notices for both parties.
-5. **Escalation gate (Policy v2.1):** the case is resolved automatically only when the Judge is confident enough for the dispute's stakes. Safety incidents, disputes over SGD 50 and route deviations over 2 km always go to a human. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag. An inconclusive ruling also goes to a human, with the full agent transcript.
-6. **Learning feedback:** when a reviewer overrides the AI and marks the decision as a precedent, the Judge sees it as a calibration example on similar cases. No model fine-tuning is involved.
+4. **Fraud & Bad-Faith Detection Agent** runs alongside them without a model call. It turns account risk flags, dispute history and account age into risk signals that the Judge sees as context, never as evidence.
+5. **Judge** must answer a mandatory checklist, then rules with a structured resolution (action, amount, recipient) and plain-language notices for both parties.
+6. **Escalation gate (Policy v2.1):** the case is resolved automatically only when the Judge is confident enough for the dispute's stakes. Safety incidents, disputes over SGD 50 and route deviations over 2 km always go to a human. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag. An inconclusive ruling also goes to a human, with the full agent transcript.
+7. **Learning feedback:** when a reviewer overrides the AI and marks the decision as a precedent, the Judge sees it as a calibration example on similar cases. No model fine-tuning is involved.
 
 Everything the agents say to each other is visible in the case page, so a reviewer can see how the ruling was reached.
 
-**Dispute types handled:** route deviation, no-show charge, property damage, safety incident. Two are demonstrated end to end with sample datasets: DISP-003 (route deviation) and DISP-002 (no-show).
+**Dispute types handled:** route deviation, fare and surge pricing, no-show charge, property damage, safety incident. The app ships two samples to load in one click: DISP-003 (route deviation) and DISP-002 (no-show). The fare-dispute and DISP-001 route-deviation documents in [`reference/`](reference/) can be imported as files. Property damage and safety incidents have Judge checklists but no sample data yet; safety incidents always go to a human.
 
 ## Screenshots
 

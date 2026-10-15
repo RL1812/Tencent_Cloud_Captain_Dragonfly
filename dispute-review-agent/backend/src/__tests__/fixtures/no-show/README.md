@@ -23,7 +23,7 @@ The endpoint does not persist these cases to the dashboard.
 
 Example from the backend directory, while the API is running:
 
-    curl.exe http://localhost:3000/api/disputes/dataset-review -H "Content-Type: application/json" --data-binary "@src/__tests__/fixtures/no-show/DISP-003.json"
+    curl http://localhost:3000/api/disputes/dataset-review -H "Content-Type: application/json" --data-binary "@src/__tests__/fixtures/no-show/DISP-003.json"
 
 Only send a DISP-*.json file to the model. The separate
 [expected-results.json](expected-results.json) is an evaluation answer key with

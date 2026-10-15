@@ -16,7 +16,7 @@ for three structured dispute types (other legacy case categories remain availabl
   fare_breakdown, plus recommended_route and fare_policy.
 - route_deviation (new DISP-001 document): optimal_route, aggregate fare breakdown,
   traffic conditions and route-notification analysis.
-- fare_dispute (new DISP-003 document): upfront quote, actual fare, quote-time and
+- fare_dispute (reference/Document 1, which also uses the ID DISP-003): upfront quote, actual fare, quote-time and
   trip-start surge multipliers, and the notification record.
 
 For route deviations, route-analysis.ts computes, without a model call, the extra
@@ -35,9 +35,16 @@ appear under `/computed_policy_assessment/...`.
     const ruling = await runJudge(dataset, rider, driver);
 
 Normally call reviewDispute(dataset). A compiled LangGraph runs prioritization,
-evidence validation, both advocates in parallel, the Judge, and confidence-based
-routing. It returns the ruling, advocateSubmissions.rider/driver,
-priorityAssessment, evidenceValidation, escalation, and workflowStatus.
+evidence validation, then both advocates and fraud/bad-faith detection in parallel,
+the Judge, and confidence-based routing. It returns the ruling,
+advocateSubmissions.rider/driver, priorityAssessment, evidenceValidation,
+fraudAssessment, escalation, and workflowStatus.
+
+The Fraud and Bad-Faith Detection agent (fraud-agent.ts) makes no model call. It reads
+account risk flags, dispute rate, the share of past disputes decided against each party,
+and account age, and passes the signals to the Judge as fraudRiskSignals. They are risk
+context only: never evidence, never citable, and they must not decide a ruling. A review
+therefore still makes three model calls.
 All model calls go through src/lib/llm-chat.ts: Google Gemini (free tier) when
 GEMINI_API_KEY is set — gemini-3.8-flash first, then GEMINI_FALLBACK_MODELS —
 otherwise Tencent TokenHub (hy3).
@@ -81,11 +88,14 @@ response time without consuming an LLM call. For stored cases, a failed review
 Policy v2.1: safety and values above SGD 50 always go to a human; SGD 10–50 requires
 80% confidence; route deviations above 2 km go to a human; and any fraud flag raises
 the confidence requirement to 95%. An inconclusive ruling also goes to a human. A human
-decision (POST /api/disputes/:id/override) closes the case. The Learning Feedback
-Agent then indexes that reviewed outcome when PostgreSQL and Ollama are available.
-This is RAG feedback, not model fine-tuning. If the knowledge base is offline,
-the human decision still saves and its feedback status is reported as skipped.
-Earlier reviews, escalations and human decisions are never shown to the agents.
+decision (POST /api/disputes/:id/override) closes the case. If the reviewer keeps it as
+a precedent, it is saved to the precedent store and the Judge is shown it (with up to
+two others of the same dispute type) when reviewing later cases; this is how the AI
+learns, without fine-tuning. The Learning Feedback Agent also indexes the outcome in the
+knowledge base when PostgreSQL and Ollama are available, where it can be searched through
+/api/knowledge; the agents do not read the knowledge base. If it is offline, the human
+decision still saves and its feedback status is reported as skipped. A case's own
+earlier reviews, escalations and human decisions are never shown to the agents.
 
 Model output is checked before use: confidenceScore is rounded to an integer
 0-100, and each dataset policy argument must cite supplied policy.
