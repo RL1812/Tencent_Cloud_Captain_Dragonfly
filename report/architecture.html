@@ -1,0 +1,122 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --ink: #1e2a44; --muted: #5d6b85; --line: #7c869c;
+    --yellow-bg: #fff4d9; --yellow: #d39b2a;
+    --green-bg: #e3f5ec; --green: #3aa070;
+    --blue-bg: #e3ecfb; --blue: #3f6fd8;
+    --pink-bg: #fde6ee; --pink: #df3f6f;
+    --grey-bg: #eef1f8; --grey: #a3abbd;
+    --gold: #c88a12; --red: #c43a5f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 2000px; height: 1180px; background: #fff; overflow: hidden; }
+  body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); position: relative; }
+  .abs { position: absolute; }
+  h1 { position: absolute; left: 60px; top: 30px; font-size: 50px; font-weight: 700; letter-spacing: -0.5px; }
+  .subtitle { left: 60px; top: 98px; font-size: 28px; color: var(--muted); }
+  .frame { left: 440px; top: 170px; width: 1500px; height: 660px; border: 2px solid #8a93a8; border-radius: 22px; background: #f7f8fc; }
+  .frame-title { left: 465px; top: 184px; font-size: 25px; font-weight: 700; }
+  .box { position: absolute; border: 2px solid; border-radius: 14px; text-align: center; display: flex; flex-direction: column; justify-content: center; padding: 6px 10px; }
+  .box .t { font-size: 28px; font-weight: 700; line-height: 1.15; }
+  .box .s { font-size: 20px; color: var(--muted); line-height: 1.3; margin-top: 4px; }
+  .box.sm .t { font-size: 25px; }
+  .box.sm .s { font-size: 18px; margin-top: 2px; }
+  .white { background: #fff; border-color: var(--grey); }
+  .yellow { background: var(--yellow-bg); border-color: var(--yellow); }
+  .green { background: var(--green-bg); border-color: var(--green); }
+  .blue { background: var(--blue-bg); border-color: var(--blue); }
+  .pink { background: var(--pink-bg); border-color: var(--pink); }
+  .grey { background: var(--grey-bg); border-color: var(--grey); }
+  .label { font-size: 20px; }
+  .legend { left: 470px; top: 570px; width: 430px; height: 190px; background: #fff; border: 2px solid var(--grey); border-radius: 14px; }
+  .legend .h { position: absolute; left: 0; right: 0; top: 12px; text-align: center; font-size: 23px; font-weight: 700; }
+  .legend .row { position: absolute; left: 24px; font-size: 21px; display: flex; align-items: center; gap: 14px; }
+  .legend .sw { width: 38px; height: 26px; border: 2px solid; border-radius: 6px; }
+  .section { left: 60px; top: 885px; font-size: 27px; font-weight: 700; }
+  .rule { left: 60px; top: 870px; width: 1880px; border-top: 2px solid #e1e4ec; }
+  svg { position: absolute; left: 0; top: 0; }
+</style>
+</head>
+<body>
+  <h1>RydeResolve — system architecture</h1>
+  <div class="abs subtitle">Both sides argued in parallel, one Judge decides, a human takes over when the stakes are high or confidence is low</div>
+
+  <!-- Left column -->
+  <div class="box blue" style="left:60px;top:220px;width:330px;height:150px"><div class="t">Web app (React)</div><div class="s">Dashboard · Submit case<br>Case detail · Precedents</div></div>
+  <div class="box white" style="left:60px;top:420px;width:330px;height:110px"><div class="t">Users</div><div class="s">Reviewer · Rider · Driver</div></div>
+
+  <!-- Workflow frame -->
+  <div class="abs frame"></div>
+  <div class="abs frame-title">Express + TypeScript API &nbsp; · &nbsp; LangGraph review workflow</div>
+
+  <div class="box white" style="left:470px;top:240px;width:230px;height:150px"><div class="t">Case record</div><div class="s">GPS · chats<br>app events · fare<br>policy · profiles</div></div>
+  <div class="box yellow" style="left:735px;top:240px;width:220px;height:150px"><div class="t">Prioritization</div><div class="s">rule-based<br>queue + SLA</div></div>
+  <div class="box yellow" style="left:990px;top:240px;width:300px;height:150px"><div class="t">Evidence validation</div><div class="s">rule-based<br>+ route analysis</div></div>
+
+  <div class="box green sm" style="left:1330px;top:205px;width:250px;height:76px"><div class="t">Rider Advocate</div><div class="s">LLM · in parallel</div></div>
+  <div class="box blue sm" style="left:1330px;top:291px;width:250px;height:76px"><div class="t">Driver Advocate</div><div class="s">LLM · in parallel</div></div>
+  <div class="box yellow sm" style="left:1330px;top:377px;width:250px;height:76px"><div class="t">Fraud detection</div><div class="s">rule-based · in parallel</div></div>
+
+  <div class="box pink" style="left:1620px;top:240px;width:290px;height:150px"><div class="t">Judge &nbsp;(LLM)</div><div class="s">checklist · precedents<br>fraud signals as context<br>resolution · party notices</div></div>
+
+  <div class="box green" style="left:1290px;top:500px;width:290px;height:110px"><div class="t">Auto-resolved</div><div class="s">when the gate passes<br>resolution + notices</div></div>
+  <div class="box yellow" style="left:1620px;top:490px;width:290px;height:130px"><div class="t">Escalation gate</div><div class="s">Policy v2.1<br>80% confidence needed,<br>95% with a fraud flag</div></div>
+
+  <div class="box grey" style="left:960px;top:670px;width:290px;height:110px"><div class="t">Precedent store</div><div class="s">data/precedents.json</div></div>
+  <div class="box yellow" style="left:1290px;top:670px;width:290px;height:110px"><div class="t">Learning feedback</div><div class="s">save as precedent</div></div>
+  <div class="box pink" style="left:1620px;top:670px;width:290px;height:110px"><div class="t">Human decision</div><div class="s">decide any case · override</div></div>
+
+  <!-- Legend -->
+  <div class="abs legend">
+    <div class="h">Legend</div>
+    <div class="row" style="top:56px"><span class="sw yellow"></span>rule-based step (no model call)</div>
+    <div class="row" style="top:96px"><span class="sw green"></span>LLM agent / auto outcome</div>
+    <div class="row" style="top:136px"><span class="sw pink"></span>judgement / human step</div>
+  </div>
+
+  <svg width="2000" height="1180" viewBox="0 0 2000 1180">
+    <defs>
+      <marker id="a" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M1 1 L10 6 L1 11" fill="none" stroke="#7c869c" stroke-width="2"/>
+      </marker>
+      <marker id="g" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+        <path d="M1 1 L10 6 L1 11" fill="none" stroke="#c88a12" stroke-width="2"/>
+      </marker>
+    </defs>
+    <g stroke="#7c869c" stroke-width="3" fill="none" marker-end="url(#a)">
+      <path d="M392 295 H436"/>
+      <path d="M225 418 V374"/>
+      <path d="M702 315 H731"/>
+      <path d="M957 315 H986"/>
+      <path d="M1292 300 L1326 248"/>
+      <path d="M1292 315 L1326 329"/>
+      <path d="M1292 330 L1326 410"/>
+      <path d="M1582 248 L1616 290"/>
+      <path d="M1582 329 L1616 315"/>
+      <path d="M1582 410 L1616 345"/>
+      <path d="M1765 392 V486"/>
+      <path d="M1618 555 H1584"/>
+      <path d="M1765 622 V666"/>
+      <path d="M1618 725 H1584"/>
+      <path d="M1288 725 H1254"/>
+    </g>
+    <path d="M1105 668 V478 H1650 V394" stroke="#c88a12" stroke-width="3" fill="none" marker-end="url(#g)"/>
+    <text x="1090" y="500" font-size="20" fill="#c88a12" text-anchor="end" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">calibrates the Judge on later cases</text>
+    <text x="1090" y="524" font-size="20" fill="#c88a12" text-anchor="end" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">(never evidence)</text>
+    <text x="1750" y="640" font-size="19" font-weight="700" fill="#c43a5f" text-anchor="end" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">safety · over SGD 50 · route &gt; 2 km</text>
+    <text x="1750" y="661" font-size="19" font-weight="700" fill="#c43a5f" text-anchor="end" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">below threshold · inconclusive</text>
+  </svg>
+
+  <!-- Services -->
+  <div class="abs rule"></div>
+  <div class="abs section">Services and storage</div>
+  <div class="box green" style="left:60px;top:935px;width:430px;height:170px"><div class="t">LLM provider</div><div class="s">Google Gemini (free tier)<br>or Tencent TokenHub (LLM_PROVIDER)<br>3 model calls per review</div></div>
+  <div class="box grey" style="left:520px;top:935px;width:430px;height:170px"><div class="t">Case and file storage</div><div class="s">Cases: in memory<br>Uploads: disk (backend/uploads)<br>Precedents: JSON file</div></div>
+  <div class="box grey" style="left:980px;top:935px;width:500px;height:170px"><div class="t">Knowledge base (optional)</div><div class="s">PostgreSQL + pgvector · Ollama<br>PDF parsing · OCR · retrieval<br>the review works without it</div></div>
+  <div class="box blue" style="left:1510px;top:935px;width:430px;height:170px"><div class="t">Built and checked with</div><div class="s">Claude Code (web app)<br>CodeBuddy / WorkBuddy<br>95 backend tests</div></div>
+</body>
+</html>
