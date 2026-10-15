@@ -25,7 +25,7 @@ The handbook asks for: project overview, real-world scenario, solution design (b
 | **Rider** | Files a dispute ticket and receives a plain-language ruling notice. |
 | **Driver** | Responds to a dispute and receives a plain-language ruling notice. |
 
-**Value proposition:** RydeResolve replaces manual evidence-gathering and deliberation with a transparent multi-agent workflow — two advocates argue each side in parallel, a Judge weighs both cases against the original record with a mandatory checklist, and a confidence threshold decides whether the case auto-resolves or escalates to a human. Every ruling is grounded in cited evidence, capped at the disputed charge, and explained in plain language to both parties.
+**Value proposition:** RydeResolve replaces manual evidence-gathering and deliberation with a transparent multi-agent workflow — two advocates argue each side in parallel, a Judge weighs both cases against the original record with a mandatory checklist, and Policy v2.1 escalation rules decide whether the case auto-resolves or escalates to a human. Every ruling is grounded in cited evidence, capped at the disputed charge, and explained in plain language to both parties.
 
 
 ## 3. Real-World Scenario
@@ -46,7 +46,7 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 1. **Gathers and validates evidence deterministically** — schema-checks the dataset, computes route-deviation measurements (haversine distance, off-route points, unexpected stops, fare arithmetic) without a model call, so agents cite measured numbers rather than estimating from raw coordinates.
 2. **Builds both sides of the case in parallel** — the Rider Advocate and Driver Advocate independently gather evidence from the same record and argue their party's position, each citing specific JSON-pointer paths.
 3. **Adjudicates with a mandatory checklist** — the Judge must answer every required checklist item for the dispute type before ruling; a ruling that skips an item is rejected.
-4. **Escalates transparently** — below 60% confidence or when inconclusive, the case is escalated to a human reviewer with the full agent transcript and checklist.
+4. **Escalates transparently** — under the Ryde Dispute Resolution Policy v2.1 rules, a case goes to a human reviewer when the Judge is inconclusive, when confidence is below the threshold for that dispute (80% for route deviations and for disputes of S$10–50; none for disputes under S$10; always for disputes over S$50 and for safety incidents), when a route deviation exceeds the policy's 2 km human-review limit, or when either party carries a fraud flag (95% confidence required). The reviewer sees the full agent transcript and checklist.
 5. **Learns from human decisions** — when a reviewer overrides the AI and marks "use as precedent", the decision is saved and shown to the Judge as few-shot calibration examples for future cases of the same type — without model fine-tuning.
 
 
@@ -63,7 +63,8 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 - **Rider Advocate** — gathers rider-side evidence from the record, articulates the rider's claim based on company policy, and argues for rider-favorable outcomes. Acknowledges adverse evidence.
 - **Driver Advocate** — mirrors the Rider Advocate for the driver's perspective.
 - **Judge** — weighs both submissions against the original record (advocate arguments are not additional evidence), answers a mandatory checklist, consults up to 3 human precedents of the same dispute type, and issues a structured resolution (action, amount, currency, recipient, basis) capped at the disputed charge. Also writes plain-language party notices.
-- **Escalation Agent** — if Judge confidence is below 60% or the ruling is inconclusive, the case is escalated to a human reviewer. Otherwise, the case auto-resolves.
+- **Fraud & Bad-Faith Detection Agent** — runs alongside the advocates and reads only structured signals already in the record (account risk flags, dispute history and rate, share of disputes decided against the party, young accounts with many disputes). It makes no model call, so a review still costs three LLM calls. Its output is risk context for the Judge; it is never evidence about the trip and never decides a case.
+- **Escalation Agent** — applies Policy v2.1 (`policy.ts`, `escalation-agent.ts`): inconclusive rulings, safety incidents, route deviations over 2 km, disputes over S$50, and confidence below the threshold for the dispute's value (0% under S$10, 80% from S$10 to S$50, 80% for route deviations, raised to 95% when either party has a fraud flag) all go to a human reviewer. Otherwise the case auto-resolves.
 - **Human Decision** — a reviewer can decide any case at any time, regardless of whether the AI has reviewed it. The decision overrides the AI, and can be revised or withdrawn.
 - **Learning Feedback Agent** — when a human decision is marked "use as precedent", it is saved to the precedent store. The Judge sees it as few-shot calibration examples for future cases of the same type. This is RAG feedback, not model fine-tuning.
 
@@ -93,7 +94,7 @@ The review runs as a compiled LangGraph state machine. Each node writes its outp
 
 **Key design decisions:**
 
-- **Both advocates run in parallel** via LangGraph's fan-out (`addEdge` from `evidence_validation` to both `rider_advocate` and `driver_advocate`, then `addEdge(['rider_advocate', 'driver_advocate'], 'judge')`).
+- **Both advocates run in parallel** via LangGraph's fan-out (`addEdge` from `evidence_validation` to `rider_advocate`, `driver_advocate` and `fraud_detection`, then `addEdge(['rider_advocate', 'driver_advocate', 'fraud_detection'], 'judge')`).
 - **No fallback picks a winner.** If either advocate's output fails schema validation or source-ref verification, the Judge call is skipped entirely. The result is inconclusive with confidence 0, and the case is escalated to a human.
 - **Source-ref verification.** Every citation in an advocate or Judge output is validated against the source index built from the original record (plus computed route analysis for route-deviation cases). Invented citations are rejected.
 - **Resolution capping.** Refunds cannot exceed the disputed charge. Compensation may exceed it (up to 2× the charge) to account for losses greater than the fare. An inconclusive ruling cannot move money.
@@ -141,7 +142,7 @@ All claims below are supported by the repository or handbook. No results are inv
 | Manual dispute resolution takes **24–72 hours** per dispute | Handbook V2.0, page 4 |
 | Manual resolution causes **inconsistent rulings** — different agents reach different conclusions on similar cases | Handbook V2.0, page 4 |
 | Manual resolution incurs **high operational costs** — millions spent annually on human support hours | Handbook V2.0, page 4 |
-| **Confidence threshold of 60%** governs auto-resolution vs. human escalation | `escalation-agent.ts`: `ESCALATION_THRESHOLD = 60` |
+| **Policy v2.1 rules and a confidence threshold** (80% for route deviations and S$10–50 disputes; none under S$10; 95% when a party has a fraud flag) govern auto-resolution vs. human escalation | `escalation-agent.ts`, `policy.ts` |
 | A single AI review makes **3 LLM calls** (Rider Advocate + Driver Advocate + Judge) | `agents/README.md` and `orchestrator.ts` |
 | The Gemini free tier allows ~20 requests per model per day, so a review takes 15 s – 3 min | `README.md`, Notes section |
 | The Prioritization Agent assigns target response times from **15 min (urgent) to 24 h (low)** without an LLM call | `prioritization-agent.ts`: `responseMinutes` |
@@ -149,7 +150,7 @@ All claims below are supported by the repository or handbook. No results are inv
 | Resolution amounts are **capped at the disputed charge** (refunds) or 2× (compensation) | `judge.ts`: `disputedAmount()` and `COMPENSATION_CAP_MULTIPLIER` |
 | The system handles **two dispute categories** end-to-end: route deviation and no-show charge | `dataset.ts`, `checklist.ts`, sample datasets DISP-002 and DISP-003 |
 | The system supports **four dispute types** in its data model (route deviation, no-show, property damage, safety accident) | `types.ts`: `DisputeType` |
-| Route-deviation analysis is **deterministic** (no model call) — haversine distance, off-route detection (500 m threshold), unexpected stops, fare-breakdown arithmetic | `route-analysis.ts` |
+| Route-deviation analysis and fraud-signal detection are **deterministic** (no model call) — haversine distance, off-route detection (500 m threshold), unexpected stops, fare-breakdown arithmetic | `route-analysis.ts` |
 | Human decisions marked "use as precedent" are saved to a **persistent JSON file** that survives backend restarts | `precedents.ts`: `PRECEDENTS_FILE` |
 | Cases are kept **in memory** and reset on restart; precedents, uploads, and the knowledge base persist | `README.md`, Notes section |
 

@@ -24,7 +24,7 @@
 | **Rider** | Files a dispute ticket and receives a plain-language ruling notice. |
 | **Driver** | Responds to a dispute and receives a plain-language ruling notice. |
 
-**Value proposition:** RydeResolve replaces manual evidence-gathering and deliberation with a transparent multi-agent workflow — two advocates argue each side in parallel, a Judge weighs both cases against the original record with a mandatory checklist, and a confidence threshold decides whether the case auto-resolves or escalates to a human. Every ruling is grounded in cited evidence, capped at the disputed charge, and explained in plain language to both parties.
+**Value proposition:** RydeResolve replaces manual evidence-gathering and deliberation with a transparent multi-agent workflow — two advocates argue each side in parallel, a Judge weighs both cases against the original record with a mandatory checklist, and Policy v2.1 escalation rules decide whether the case auto-resolves or escalates to a human. Every ruling is grounded in cited evidence, capped at the disputed charge, and explained in plain language to both parties.
 
 ---
 
@@ -46,7 +46,7 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 1. **Gathers and validates evidence deterministically** — schema-checks the dataset, computes route-deviation measurements (haversine distance, off-route points, unexpected stops, fare arithmetic) without a model call, so agents cite measured numbers rather than estimating from raw coordinates.
 2. **Builds both sides of the case in parallel** — the Rider Advocate and Driver Advocate independently gather evidence from the same record and argue their party's position, each citing specific JSON-pointer paths.
 3. **Adjudicates with a mandatory checklist** — the Judge must answer every required checklist item for the dispute type before ruling; a ruling that skips an item is rejected.
-4. **Escalates transparently** — below 60% confidence or when inconclusive, the case is escalated to a human reviewer with the full agent transcript and checklist.
+4. **Escalates transparently** — under the Ryde Dispute Resolution Policy v2.1 rules, a case goes to a human reviewer when the Judge is inconclusive, when confidence is below the threshold for that dispute (80% for route deviations and for disputes of S$10–50; none for disputes under S$10; always for disputes over S$50 and for safety incidents), when a route deviation exceeds the policy's 2 km human-review limit, or when either party carries a fraud flag (95% confidence required). The reviewer sees the full agent transcript and checklist.
 5. **Learns from human decisions** — when a reviewer overrides the AI and marks "use as precedent", the decision is saved and shown to the Judge as few-shot calibration examples for future cases of the same type — without model fine-tuning.
 
 ---
@@ -56,20 +56,20 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 ### 4.1 Business Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Dispute lifecycle                            │
-│                                                                     │
-│  Dispute filed ──► Intake ──► Parallel advocacy ──► Judge ──► Escalation
-│    (rider or     (prioritize,   (Rider Advocate +   (checklist,   (confidence
-│     driver)       validate       Driver Advocate    precedents,    ≥ 60% → auto
-│                   evidence)      in parallel)        resolution)   resolve;
-│                                                                   < 60% → human)
-│                                                                     │
-│                  └── Human decision ──► Learning feedback ──────────┘
-│                         (override AI,      (save as precedent,
-│                          revise,           AI sees it next time)
-│                          withdraw)
-└─────────────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐
+│                            Dispute lifecycle                              │
+│                                                                           │
+│ Dispute filed ─► Intake ─► Parallel analysis ─► Judge ─► Escalation check │
+│  (rider or      (prioritize, (Rider Advocate,   (checklist, (Policy v2.1   │
+│   driver)        validate     Driver Advocate,   precedents,  rules and     │
+│                  evidence)    Fraud detection)   resolution)  confidence)   │
+│                                                                           │
+│              auto-resolve  ◄── rules met ──┴── rule triggered ──► human    │
+│                                                                           │
+│  Human decision ─► Learning feedback                                      │
+│  (override AI, revise,  (save as precedent,                               │
+│   withdraw)              AI sees it next time)                            │
+└───────────────────────────────────────────────────────────────────────────┘
 ```
 
 **Business roles:**
@@ -79,7 +79,8 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 - **Rider Advocate** — gathers rider-side evidence from the record, articulates the rider's claim based on company policy, and argues for rider-favorable outcomes. Acknowledges adverse evidence.
 - **Driver Advocate** — mirrors the Rider Advocate for the driver's perspective.
 - **Judge** — weighs both submissions against the original record (advocate arguments are not additional evidence), answers a mandatory checklist, consults up to 3 human precedents of the same dispute type, and issues a structured resolution (action, amount, currency, recipient, basis) capped at the disputed charge. Also writes plain-language party notices.
-- **Escalation Agent** — if Judge confidence is below 60% or the ruling is inconclusive, the case is escalated to a human reviewer. Otherwise, the case auto-resolves.
+- **Fraud & Bad-Faith Detection Agent** — runs alongside the advocates and reads only structured signals already in the record (account risk flags, dispute history and rate, share of disputes decided against the party, young accounts with many disputes). It makes no model call, so a review still costs three LLM calls. Its output is risk context for the Judge; it is never evidence about the trip and never decides a case.
+- **Escalation Agent** — applies Policy v2.1 (`policy.ts`, `escalation-agent.ts`): inconclusive rulings, safety incidents, route deviations over 2 km, disputes over S$50, and confidence below the threshold for the dispute's value (0% under S$10, 80% from S$10 to S$50, 80% for route deviations, raised to 95% when either party has a fraud flag) all go to a human reviewer. Otherwise the case auto-resolves.
 - **Human Decision** — a reviewer can decide any case at any time, regardless of whether the AI has reviewed it. The decision overrides the AI, and can be revised or withdrawn.
 - **Learning Feedback Agent** — when a human decision is marked "use as precedent", it is saved to the precedent store. The Judge sees it as few-shot calibration examples for future cases of the same type. This is RAG feedback, not model fine-tuning.
 
@@ -115,7 +116,8 @@ Prioritization (deterministic, no LLM)
 Evidence Validation (deterministic, no LLM)
   │  (Route Analysis runs inside this node for route-deviation cases)
   │
-  └──► Fan out to both advocates (parallel, LLM)
+  └──► Fan out in parallel: both advocates (LLM) and Fraud & Bad-Faith
+       Detection (deterministic, no LLM)
          │
     ┌────┴────┐
     │         │
@@ -137,12 +139,13 @@ Advocate   Advocate
       └── Party notices (plain-language messages)
          │
          ▼
-  Confidence-based Escalation
+  Escalation check (Policy v2.1 rules + confidence)
          │
     ┌────┴────────────────┐
     │                     │
- confidence ≥ 60%     confidence < 60%
- & not inconclusive   or inconclusive
+ policy rules met     policy rule triggered,
+ & confidence ≥        confidence below threshold,
+   threshold          or inconclusive
     │                     │
     ▼                     ▼
  Auto-resolved        Escalated to human
@@ -159,7 +162,7 @@ Advocate   Advocate
 
 **Key design decisions:**
 
-- **Both advocates run in parallel** via LangGraph's fan-out (`addEdge` from `evidence_validation` to both `rider_advocate` and `driver_advocate`, then `addEdge(['rider_advocate', 'driver_advocate'], 'judge')`).
+- **Both advocates run in parallel** via LangGraph's fan-out (`addEdge` from `evidence_validation` to `rider_advocate`, `driver_advocate` and `fraud_detection`, then `addEdge(['rider_advocate', 'driver_advocate', 'fraud_detection'], 'judge')`).
 - **No fallback picks a winner.** If either advocate's output fails schema validation or source-ref verification, the Judge call is skipped entirely. The result is inconclusive with confidence 0, and the case is escalated to a human.
 - **Source-ref verification.** Every citation in an advocate or Judge output is validated against the source index built from the original record (plus computed route analysis for route-deviation cases). Invented citations are rejected.
 - **Resolution capping.** Refunds cannot exceed the disputed charge. Compensation may exceed it (up to 2× the charge) to account for losses greater than the fare. An inconclusive ruling cannot move money.
@@ -208,7 +211,7 @@ All claims below are supported by the repository or handbook. No results are inv
 | Manual dispute resolution takes **24–72 hours** per dispute | Handbook V2.0, page 4 |
 | Manual resolution causes **inconsistent rulings** — different agents reach different conclusions on similar cases | Handbook V2.0, page 4 |
 | Manual resolution incurs **high operational costs** — millions spent annually on human support hours | Handbook V2.0, page 4 |
-| **Confidence threshold of 60%** governs auto-resolution vs. human escalation | `escalation-agent.ts`: `ESCALATION_THRESHOLD = 60` |
+| **Policy v2.1 rules and a confidence threshold** (80% for route deviations and S$10–50 disputes; none under S$10; 95% when a party has a fraud flag) govern auto-resolution vs. human escalation | `escalation-agent.ts`, `policy.ts` |
 | A single AI review makes **3 LLM calls** (Rider Advocate + Driver Advocate + Judge) | `agents/README.md` and `orchestrator.ts` |
 | The Gemini free tier allows ~20 requests per model per day, so a review takes 15 s – 3 min | `README.md`, Notes section |
 | The Prioritization Agent assigns target response times from **15 min (urgent) to 24 h (low)** without an LLM call | `prioritization-agent.ts`: `responseMinutes` |
@@ -216,7 +219,7 @@ All claims below are supported by the repository or handbook. No results are inv
 | Resolution amounts are **capped at the disputed charge** (refunds) or 2× (compensation) | `judge.ts`: `disputedAmount()` and `COMPENSATION_CAP_MULTIPLIER` |
 | The system handles **two dispute categories** end-to-end: route deviation and no-show charge | `dataset.ts`, `checklist.ts`, sample datasets DISP-002 and DISP-003 |
 | The system supports **four dispute types** in its data model (route deviation, no-show, property damage, safety accident) | `types.ts`: `DisputeType` |
-| Route-deviation analysis is **deterministic** (no model call) — haversine distance, off-route detection (500 m threshold), unexpected stops, fare-breakdown arithmetic | `route-analysis.ts` |
+| Route-deviation analysis and fraud-signal detection are **deterministic** (no model call) — haversine distance, off-route detection (500 m threshold), unexpected stops, fare-breakdown arithmetic | `route-analysis.ts` |
 | Human decisions marked "use as precedent" are saved to a **persistent JSON file** that survives backend restarts | `precedents.ts`: `PRECEDENTS_FILE` |
 | Cases are kept **in memory** and reset on restart; precedents, uploads, and the knowledge base persist | `README.md`, Notes section |
 
@@ -224,7 +227,7 @@ All claims below are supported by the repository or handbook. No results are inv
 
 ## 6. Demo Walkthrough
 
-### Demo 1: DISP-003 — Route Deviation (Auto-Resolved)
+### Demo 1: DISP-003 — Route Deviation (AI Recommends a Refund; Human Confirms)
 
 **Case:** Rider Priya Nair (R-5510) disputes a S$31.40 fare on a trip from Toa Payoh Hub to Raffles Place MRT. The upfront estimate was S$19.00 via CTE. The rider says the driver took PIE/ECP instead, ignored a request to return to CTE, and the fare was 65% above the estimate. Driver has a fraud flag for route deviation.
 
@@ -255,7 +258,7 @@ All claims below are supported by the repository or handbook. No results are inv
 
    The Judge issues a **partial refund of S$12.40** to the rider (S$31.40 − S$19.00), capped at the disputed charge (S$31.40). Party notices are generated for both rider and driver in plain language.
 
-6. **Escalation Agent** — The Judge's confidence is ≥ 60% and the recommendation is not inconclusive, so the case is **auto-resolved** (`workflowStatus = auto_resolved`, `status = resolved`).
+6. **Escalation Agent** — Policy v2.1 sends this case to a human reviewer even when the Judge is confident: the route is 7.8 km longer than recommended, above the policy's 2 km human-review limit, and the driver carries a fraud flag, which raises the required confidence to 95%. The case is escalated (`escalation.needsHuman = true`, `status = under_review`) with the Judge's S$12.40 partial refund shown as a recommendation and the notices held as drafts until the reviewer decides.
 
 ### Demo 2: DISP-002 — No-Show Charge (Ambiguous Case; May Escalate to a Human)
 
@@ -284,11 +287,11 @@ All claims below are supported by the repository or handbook. No results are inv
 
    Because the wait-start ambiguity means the no-show threshold may or may not be met depending on interpretation, the Judge flags this conflict. The Judge rules **Inconclusive** at **60% confidence**. The resolution is **No action — charge stands** (no money moved, as an inconclusive ruling cannot move money per the resolution capping rules).
 
-6. **Escalation Agent** — The Judge's recommendation is inconclusive, so the case is **escalated to a human reviewer** (`workflowStatus = human_intervention_required`, `status = under_review`, `escalation.needsHuman = true`).
+6. **Escalation Agent** — When the Judge's recommendation is inconclusive, the case is **escalated to a human reviewer** (`workflowStatus = human_intervention_required`, `status = under_review`, `escalation.needsHuman = true`).
 
 7. **Human Decision** — The reviewer reviews the full agent transcript (both advocates' submissions, the Judge's checklist with conflict flags, the resolution attempt, and the escalation reason), then decides the case. If the reviewer upholds the cancellation charge (as the sample dataset's expected ruling suggests) and marks "use as precedent", the decision is saved to `backend/data/precedents.json` and the Judge will see it as a calibration example the next time it reviews a no-show case.
 
-**Run-to-run variation.** Model output is not deterministic. In our first test run the Judge returned *Inconclusive* at 60% confidence (resolution "No action — charge stands") and the case was escalated to a human reviewer. In a later run (screenshots `proof/screenshots/07-…`, `08-…`, `09-…`) the Judge ruled for the driver without escalation and the case was resolved. Both outcomes leave the SGD 5.00 fee with the driver; what changes is whether a human is asked to confirm. A reviewer can also decide any case manually at any time, so the human-decision flow can always be shown.
+**Run-to-run variation.** Model output is not deterministic. In our first test run the Judge returned *Inconclusive* at 60% confidence (resolution "No action — charge stands") and the case was escalated to a human reviewer. In a later run, before the Policy v2.1 rules were added, the Judge ruled for the driver at 90% confidence and the case auto-resolved. Under the current rules the rider's fraud flag requires 95% confidence, so a 90% ruling on this case is also escalated. Every outcome leaves the SGD 5.00 fee with the driver; what changes is how the Judge gets there. A reviewer can also decide any case manually at any time, so the human-decision flow can always be shown.
 
 ---
 
@@ -298,7 +301,7 @@ All claims below are supported by the repository or handbook. No results are inv
 
 | Tool | Used for | Evidence |
 |---|---|---|
-| **Claude Code (Anthropic)** | Initial per-party evidence model, file upload, agent-process UI, human escalation and override, dataset import (later extended by teammates: English localisation, AgentReview.tsx, precedents page) | Commit `a5aad2d` (co-authored by Claude); conversation transcript in `proof/` |
+| **Claude Code (Anthropic)** | Initial per-party evidence model, file upload, agent-process UI, human escalation and override, dataset import (later extended by teammates: English localisation, AgentReview.tsx, precedents page) | Commit `a5aad2d` (co-authored by Claude) |
 | **WorkBuddy and CodeBuddy** (teammates), assisted by **GPT, Gemini, Codex and Claude** | Core agents (Rider Advocate, Driver Advocate, Judge, orchestrator, checklist, route analysis, dataset validation, escalation, evidence validation, prioritization, learning feedback, precedents) | Git history; WorkBuddy and CodeBuddy proof in `proof/` |
 | **CodeBuddy / WorkBuddy** | Code review (commit `7997e7e`), this submission report, and other items in our WorkBuddy session plan | Git log: `7997e7e Handle edge cases in dispute agents and store from CodeBuddy review`; proof screenshots in `proof/` |
 
@@ -314,8 +317,7 @@ Per our WorkBuddy session plan, WorkBuddy/CodeBuddy was used for:
 2. **Localization** — rewriting seed cases from Chinese/Didi to English/Singapore Ryde cases with SGD fares, and translating `docs/product/features.md` to English.
 3. **Architecture diagram** — updating the mermaid diagram in `README.md` to show the full LangGraph workflow.
 4. **This submission report** — drafting the hackathon submission text.
-5. **Demo video script** — writing a 5–8 minute demo walkthrough.
-6. **Stretch goal (if credits remained)** — adding a Fraud & Bad-Faith Detection agent.
+6. **Fraud & Bad-Faith Detection agent and demo video script** — implemented and written by teammates (`fraud-agent.ts`, `report/DEMO_SCRIPT.md`).
 
 Proof of usage is collected in `proof/`:
 - `screenshots/screencapture-workbuddy-ai-app-task-2100073428441546752-2026-10-14-10_57_47.pdf` — screenshot of a WorkBuddy session
@@ -347,17 +349,17 @@ Every point below is implemented in the repository; the source is given in brack
 | Principle | How the system implements it |
 |---|---|
 | **A human can always decide** | A reviewer can decide any case at any time, whether or not the AI has reviewed it. The decision can be revised or withdrawn, takes priority over the AI, and is not overturned by a re-review. [`docs/product/features.md`; `POST/DELETE /api/disputes/:id/override`] |
-| **Low confidence goes to a person** | The case is escalated when the Judge's confidence is below 60% or the ruling is inconclusive. [`escalation-agent.ts`] |
+| **Low confidence, high stakes or flagged accounts go to a person** | The case is escalated when the ruling is inconclusive, confidence is below the threshold for the dispute (see Section 4.1), a route deviation exceeds 2 km, the dispute is over S$50, it is a safety incident, or either party has a fraud flag (95% confidence required). [`escalation-agent.ts`, `policy.ts`] |
 | **Nothing is sent before a human decides** | For escalated cases the plain-language notices to the rider and the driver are shown as drafts ("Draft — held until a human reviewer decides"). After a human decision, the AI's draft is marked "Superseded by the human decision — rewrite before sending". Only notices for cases where the AI ruling stands are marked "Ready to send". [`PartyNoticesCard` in `AgentReview.tsx`] |
 | **No automatic money movement** | A resolution is a recommendation stored on the case. The codebase contains no payment integration. [searched `backend/src`] |
 | **Bounded outcomes** | A refund cannot exceed the disputed charge; compensation is capped at 2× the charge; an inconclusive ruling cannot move money. [`judge.ts`] |
 | **Evidence must be real** | Every citation is a JSON-pointer path checked against the original record. A citation to a record that does not exist is rejected. [`shared.ts`] |
 | **Untrusted input** | Case text and the advocates' arguments are treated as untrusted evidence, never as instructions. [`evidenceInstructions` in `shared.ts`] |
 | **No hidden tie-breaker** | If an advocate's output is unavailable or invalid, the Judge is skipped and the result is inconclusive with confidence 0. No fallback picks a winner from ratings or statement length. [`agents/README.md`; `judge.ts`] |
-| **Context is not proof** | Ratings, account age, dispute history and fraud flags are context, not proof of fault on this trip. [prompt rules in `shared.ts`] |
+| **Context is not proof** | Ratings, account age, dispute history and fraud flags are context, not proof of fault on this trip. The Fraud & Bad-Faith Detection Agent's signals are shown as risk context only, are not citable evidence, and never decide a case. [prompt rules in `shared.ts`; `fraud-agent.ts`] |
 | **Same information for both sides** | The Rider Advocate and the Driver Advocate receive the same full record. [`orchestrator.ts`] |
 | **Explainable output** | The interface shows both advocates' cases, the Judge's checklist with source conflicts, the cited records, the missing evidence, the structured resolution and the confidence reasoning. |
-| **Learning without retraining** | Human decisions that a reviewer marks as precedent calibrate how the Judge applies policy. Precedents are never evidence, and a case never sees its own earlier decision. Reviewers can delete precedents on the Precedents page. This is retrieval feedback, not model fine-tuning. [`precedents.ts`; `DELETE /api/disputes/precedents/:caseNumber`] |
+| **Learning without retraining** | Human decisions that a reviewer marks as precedent calibrate how the Judge applies policy. Precedents are never evidence, and a case never sees its own earlier decision. Reviewers can see every precedent the AI is shown and delete any of them on the Precedents page. This is retrieval feedback, not model fine-tuning. [`precedents.ts`; `DELETE /api/disputes/precedents/:caseNumber`] |
 
 ---
 
@@ -367,16 +369,16 @@ This is a hackathon prototype. The limits below are stated plainly so that the d
 
 - **Cases are stored in memory.** They reset when the backend restarts. Precedents are saved to `backend/data/precedents.json` and uploaded files are stored on disk.
 - **No sign-in or roles.** Anyone who can open the application can act as a reviewer. A production system needs authentication and role separation.
-- **Structured datasets exist for two dispute types.** Route deviation (DISP-003) and no-show charge (DISP-002) have sample datasets and tests. Property damage and safety accident are in the data model and have Judge checklists, but no sample dataset yet.
+- **Structured datasets exist for two dispute types** (plus a second route-deviation dataset and a fare-dispute sample in `reference/`). Route deviation (DISP-003) and no-show charge (DISP-002) have sample datasets and tests. Property damage and safety accident are in the data model and have Judge checklists, but no sample dataset yet.
 - **Uploaded photos and PDFs are stored and shown, but the agents do not read their contents.** Image analysis is a handbook stretch goal and is not implemented. Uploaded files appear as evidence in the case view only.
 - **The knowledge base is optional.** PostgreSQL with pgvector and Ollama are needed for document parsing, OCR and retrieval. When the knowledge base is offline, the dispute review still works and a human decision stays saved in the case record.
 - **Model quota limits throughput.** The Gemini free tier allows about 20 requests per model per day and one review makes three model calls, so a review takes 15 seconds to about 3 minutes and repeated reviews can hit the limit. The provider can be switched to Tencent TokenHub with `LLM_PROVIDER`.
 - **Single market.** The sample datasets are Singapore trips in SGD.
-- **Confidence is an assessment, not a calibrated probability.** The 60% escalation threshold is a design choice that should be tuned on real labelled cases.
+- **Confidence is an assessment, not a calibrated probability.** The escalation thresholds come from the sample policy (v2.1) and should be tuned on real labelled cases.
 
-**Testing.** The backend has 82 automated tests (agents, route-deviation analysis, no-show fixtures, knowledge base and system routes), and all pass at the time of writing (14 October 2026).
+**Testing.** The backend has 95 automated tests (agents, route-deviation analysis, no-show fixtures, knowledge base and system routes), and all pass at the time of writing (15 October 2026).
 
-**Next steps:** authentication and a persistent case store; sample datasets for property damage and safety incidents; image analysis for damage photos; connecting uploaded documents to the knowledge base; threshold tuning on real cases; and a Fraud and Bad-Faith Detection agent that passes risk signals to the Judge as context.
+**Next steps:** authentication and a persistent case store; sample datasets for property damage and safety incidents; image analysis for damage photos; connecting uploaded documents to the knowledge base; and threshold tuning on real labelled cases.
 
 ---
 
@@ -387,9 +389,9 @@ This is a hackathon prototype. The limits below are stated plainly so that the d
 | Impact and relevance | Section 3: the Ryde challenge (24–72 h resolution, inconsistent rulings, cost, churn). |
 | Human-centered design | Plain-language notices to both parties; a reviewer interface with a full audit trail; the human-decision flow (Section 8). |
 | AI interaction | Three-stage multi-agent reasoning with a mandatory checklist and structured output (Section 4). |
-| Technical execution | LangGraph workflow, validated citations, bounded resolutions, 82 passing tests (Sections 4 and 9). |
+| Technical execution | LangGraph workflow, validated citations, bounded resolutions, 95 passing tests (Sections 4 and 9). |
 | Feasibility | Runs on a free model tier or Tencent TokenHub; the limits and next steps are stated (Section 9). |
-| Demo and storytelling | Two contrasting cases: a clear-cut automatic resolution (DISP-003) and an ambiguous no-show that can escalate to a human reviewer (DISP-002) (Section 6). |
+| Demo and storytelling | Two contrasting cases: a clear-cut route deviation where the AI computes the refund but policy still requires a human (DISP-003), and an ambiguous no-show whose conflicting timers the Judge must reason about (DISP-002) (Section 6). |
 | Innovation and creativity | Precedent calibration from human decisions; deterministic route analysis so agents cite measured numbers; no tie-breaker fallback. |
 | User experience | A React interface built on shadcn/ui and Radix UI components, with the agent transcript, checklist and resolution on one case page. |
 | Responsible AI and ethics | Section 8. |
@@ -409,8 +411,8 @@ Items marked **TO ADD** depend on teammates or on final screenshots and are inte
 | Cover image, 16:9 | Done | `report/cover/cover-380x216.png` (1520×855 master alongside) |
 | Source code | Done | GitHub repository, `main` branch |
 | Which tool wrote the core agents | Done: WorkBuddy and CodeBuddy, assisted by GPT, Gemini, Codex and Claude (as stated by the team) | Section 7 |
-| CodeBuddy / WorkBuddy conversation history | Done: exported CodeBuddy chat (code-review session) | `proof/Review the recent changes in …json` |
+| CodeBuddy / WorkBuddy conversation history | Done: two exported CodeBuddy chats | `proof/Review the recent changes in …json`; `proof/conversation_export_codebuddy.json` |
 | At least 3 chat screenshots from CodeBuddy / WorkBuddy | Done: two CodeBuddy screenshots and one WorkBuddy page capture (PDF) | `proof/screenshots/` |
-| Application screenshots | Done: DISP-003 (auto-resolved, S$12.40 refund) and DISP-002 (no-show) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard (review queue, and sorted by priority); the submit page | `proof/screenshots/04-…` to `13-…` |
-| Demo video, 5–8 minutes (optional) | **TO ADD** | — |
+| Application screenshots | Done, to be refreshed once the model quota resets: DISP-003 (S$12.40 refund) and DISP-002 (no-show) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard (review queue, and sorted by priority); the submit page | `proof/screenshots/04-…` to `13-…` |
+| Demo video, 5–8 minutes (optional) | Script written; recording **TO ADD** | `report/DEMO_SCRIPT.md` |
 | Live project link (optional, earns bonus points) | **TO ADD** | — |
