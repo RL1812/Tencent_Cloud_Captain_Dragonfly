@@ -12,7 +12,10 @@ import type {
   PriorityAssessment,
   LearningFeedback,
 } from './types';
-import type { SampleDataset } from './agents/dataset';
+import { sampleDatasetSchema, type SampleDataset } from './agents/dataset';
+import { runPrioritizationAgent } from './agents/prioritization-agent';
+import { datasetToCreateDTO } from './import-dataset';
+import disp002 from './samples/disp-002.json';
 import { precedentFromCase, precedentStore } from './precedents';
 
 let counter = 1000;
@@ -143,46 +146,6 @@ const cases: DisputeCase[] = [
       makeEvidence({ party: 'rider', kind: 'payment', title: 'Historical fare records for the same route', content: 'Previous fares for the same route were noticeably lower than this trip.' }, '2024-12-15T16:30:00Z'),
     ],
   },
-  {
-    id: 'case-003',
-    caseNumber: 'DR-2024-003',
-    status: 'pending',
-    priority: 'medium',
-    type: 'no_show_charge',
-    title: 'Rider reports rude conduct and refusal to continue the trip',
-    createdAt: '2024-12-16T14:00:00Z',
-    updatedAt: '2024-12-16T14:00:00Z',
-    driver: {
-      name: 'Wong Kah Lok',
-      id: 'DRV-4490',
-      rating: 4.2,
-      statement:
-        'The passenger was almost 10 minutes late and I waited a long time. After she got in she wanted to change the destination, which was in a completely different direction and would have badly affected my next pickup. I explained the situation — I may have sounded a bit impatient, but I did not insult her. She then said she did not want the ride, and there was nothing I could do.',
-    },
-    passenger: {
-      name: 'Chen Mei Ling',
-      id: 'PAS-7783',
-      rating: 4.8,
-      statement:
-        'The driver had a terrible attitude right from the start. I just said I wanted to change the destination and he raised his voice saying "why did you not do that earlier?" Then he said he would not drive me and told me to get out. It was raining and I waited 20 minutes by the road before I got another ride. I want to complain about him refusing the trip.',
-    },
-    trip: {
-      pickupLocation: 'Jurong Point',
-      dropoffLocation: 'Buona Vista (original destination)',
-      pickupTime: '2024-12-16T13:45:00Z',
-      dropoffTime: '2024-12-16T14:00:00Z',
-      fare: 0,
-      distance: 0,
-      vehicleModel: 'BYD Qin',
-      plateNumber: 'SKB 3344 Z',
-      currency: 'SGD',
-    },
-    evidence: [
-      makeEvidence({ party: 'driver', kind: 'text', title: 'Order wait-time record', content: 'Record of the wait time after the driver arrived at the pickup point.' }, '2024-12-16T14:00:00Z'),
-      makeEvidence({ party: 'driver', kind: 'text', title: 'Driver acceptance and arrival record', content: 'Record of the driver accepting the order and arriving at the pickup point.' }, '2024-12-16T14:00:00Z'),
-      makeEvidence({ party: 'rider', kind: 'text', title: 'In-cabin audio', content: 'Trip audio is available, covering the conversation about the mid-trip destination change and cancellation.' }, '2024-12-16T14:10:00Z'),
-    ],
-  },
 ];
 
 function generateId(): string {
@@ -212,11 +175,11 @@ export const disputeStore = {
 
   create(
     dto: CreateDisputeDTO,
-    opts: { caseNumber?: string; dataset?: SampleDataset; createdAt?: string } = {}
+    opts: { id?: string; caseNumber?: string; dataset?: SampleDataset; createdAt?: string } = {}
   ): DisputeCase {
     const now = new Date().toISOString();
     const newCase: DisputeCase = {
-      id: generateId(),
+      id: opts.id ?? generateId(),
       caseNumber: opts.caseNumber ?? generateCaseNumber(),
       status: 'pending',
       priority: dto.priority,
@@ -364,3 +327,21 @@ export const disputeStore = {
     return stats;
   },
 };
+
+/**
+ * Built-in DISP-002: the hackathon no-show sample, imported exactly as
+ * "Load sample DISP-002" would, so the agents get the full record (profiles,
+ * GPS, chat, app events) and importing the sample opens this same case.
+ */
+function seedDataset(raw: unknown, id: string): void {
+  const dataset = sampleDatasetSchema.parse(raw);
+  const created = disputeStore.create(datasetToCreateDTO(dataset), {
+    id,
+    caseNumber: dataset.dispute_ticket.dispute_id,
+    dataset,
+    createdAt: dataset.dispute_ticket.filed_at,
+  });
+  disputeStore.setPriorityAssessment(created.id, runPrioritizationAgent(dataset));
+}
+
+seedDataset(disp002, 'case-003');

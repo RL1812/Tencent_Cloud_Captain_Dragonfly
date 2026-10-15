@@ -191,12 +191,24 @@ test('dataset endpoint accepts the raw JSON and returns both submissions', async
   expect(response.body.data.advocateSubmissions.driver.agent).toBe('driver_advocate');
 });
 
-test('importing the same dataset twice returns the existing case', async () => {
+test('DISP-002 is built in with its full dataset, and importing it opens that case', async () => {
+  const builtIn = disputeStore.getById('case-003')!;
+  expect(builtIn).toMatchObject({ caseNumber: 'DISP-002', priority: 'high' });
+  // Profiles must survive so the fraud detector and the 95% fraud-flag bar apply
+  expect(builtIn.dataset).toEqual(dataset);
+  expect(builtIn.priorityAssessment?.priority).toBe('high');
+
   const app = createApp();
-  const first = await request(app).post(env.API_PREFIX + '/disputes/import-dataset').send(fixture).expect(201);
+  const first = await request(app).post(env.API_PREFIX + '/disputes/import-dataset').send(fixture).expect(200);
   const again = await request(app).post(env.API_PREFIX + '/disputes/import-dataset').send(fixture).expect(200);
-  expect(first.body.existing).toBe(false);
-  expect(again.body).toMatchObject({ existing: true, data: { id: first.body.data.id, caseNumber: 'DISP-002' } });
+  expect(first.body).toMatchObject({ existing: true, data: { id: 'case-003', caseNumber: 'DISP-002' } });
+  expect(again.body.data.id).toBe('case-003');
+});
+
+test('the built-in DISP-002 data matches the frontend sample', () => {
+  const read = (p: string) => JSON.parse(fs.readFileSync(path.resolve(__dirname, p), 'utf8'));
+  expect(read('../modules/dispute/samples/disp-002.json'))
+    .toEqual(read('../../../frontend/public/samples/disp-002.json'));
 });
 
 test('dataset endpoint rejects invalid records before calling any model', async () => {
