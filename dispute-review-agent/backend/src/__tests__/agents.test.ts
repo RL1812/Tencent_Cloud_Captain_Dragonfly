@@ -18,7 +18,7 @@ import { precedentStore } from '../modules/dispute/precedents';
 jest.mock('../lib/llm-chat', () => ({ chatCompletion: jest.fn() }));
 const chat = jest.mocked(chatCompletion);
 const markdown = fs.readFileSync(path.resolve(__dirname,
-  '../../../../RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG).md'), 'utf8');
+  '../../../../reference/RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG).md'), 'utf8');
 const fixture = JSON.parse(markdown.match(/```json\s*([\s\S]*?)```/)![1]);
 const dataset = sampleDatasetSchema.parse(fixture);
 

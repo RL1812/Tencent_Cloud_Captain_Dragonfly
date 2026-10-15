@@ -13,7 +13,7 @@ const chat = jest.mocked(chatCompletion);
 
 const disp002 = JSON.parse(
   fs.readFileSync(path.resolve(__dirname,
-    '../../../../RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG).md'),
+    '../../../../reference/RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG).md'),
     'utf8').match(/```json\s*([\s\S]*?)```/)![1]
 );
 const dataset002 = sampleDatasetSchema.parse(disp002);

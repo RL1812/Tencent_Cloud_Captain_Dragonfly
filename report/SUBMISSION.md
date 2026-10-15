@@ -261,7 +261,7 @@ All claims below are supported by the repository or handbook. No results are inv
 
 **Case:** Rider Michael Wong (R-7823) disputes a S$5.00 cancellation fee on a trip from Tiong Bahru Plaza to VivoCity. The rider claims to have been at the pickup point on time but the driver never showed up. Driver Lim Wei Ming arrived at 08:43, waited, attempted contact (1 call + 4 messages with no rider response), and cancelled at 08:51 for rider no-show. The rider has 1 fraud flag for frequent late cancellations and 3 of 4 prior disputes rejected.
 
-**Dataset:** `frontend/public/samples/disp-002.json` (also documented in `RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG).md`)
+**Dataset:** `frontend/public/samples/disp-002.json` (also documented in `reference/RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG).md`)
 
 **Workflow:**
 
@@ -300,7 +300,7 @@ All claims below are supported by the repository or handbook. No results are inv
 |---|---|---|
 | **Claude Code (Anthropic)** | Initial per-party evidence model, file upload, agent-process UI, human escalation and override, dataset import (later extended by teammates: English localisation, AgentReview.tsx, precedents page) | Commit `a5aad2d` (co-authored by Claude); conversation transcript in `proof/` |
 | **WorkBuddy and CodeBuddy** (teammates), assisted by **GPT, Gemini, Codex and Claude** | Core agents (Rider Advocate, Driver Advocate, Judge, orchestrator, checklist, route analysis, dataset validation, escalation, evidence validation, prioritization, learning feedback, precedents) | Git history; WorkBuddy and CodeBuddy proof in `proof/` |
-| **CodeBuddy / WorkBuddy** | Code review (commit `7997e7e`), this submission report, and other items in `workbuddy-session-plan.md` | Git log: `7997e7e Handle edge cases in dispute agents and store from CodeBuddy review`; `workbuddy-session-plan.md`; proof screenshots in `proof/` |
+| **CodeBuddy / WorkBuddy** | Code review (commit `7997e7e`), this submission report, and other items in our WorkBuddy session plan | Git log: `7997e7e Handle edge cases in dispute agents and store from CodeBuddy review`; proof screenshots in `proof/` |
 
 ### Runtime models
 
@@ -308,7 +308,7 @@ The running system uses **Google Gemini** (free tier: `gemini-3.8-flash` → `ge
 
 ### WorkBuddy / CodeBuddy usage
 
-Per `workbuddy-session-plan.md`, WorkBuddy/CodeBuddy was used for:
+Per our WorkBuddy session plan, WorkBuddy/CodeBuddy was used for:
 
 1. **Code review** of the agent code (route-analysis.ts, judge.ts, dataset.ts) and frontend (AgentReview.tsx) — checking for bugs, edge cases, and running backend tests. This resulted in commit `7997e7e` ("Handle edge cases in dispute agents and store from CodeBuddy review"), which refined route-analysis, judge and dataset handling, hardened store logic, surfaced additional review details in the frontend, updated docs, and added the WorkBuddy session proof.
 2. **Localization** — rewriting seed cases from Chinese/Didi to English/Singapore Ryde cases with SGD fares, and translating `docs/product/features.md` to English.

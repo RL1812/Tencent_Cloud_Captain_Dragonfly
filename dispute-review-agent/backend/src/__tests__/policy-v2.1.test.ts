@@ -11,7 +11,7 @@ import { assessStructuredPolicy, RYDE_POLICY_V2_1 } from '../modules/dispute/age
 import { formatCaseContext } from '../modules/dispute/agents/shared';
 import { datasetToCreateDTO } from '../modules/dispute/import-dataset';
 
-const root = path.resolve(__dirname, '../../../..');
+const root = path.resolve(__dirname, '../../../../reference');
 
 function jsonFromMarkdown(file: string): unknown {
   const markdown = fs.readFileSync(path.join(root, file), 'utf8');
@@ -20,7 +20,7 @@ function jsonFromMarkdown(file: string): unknown {
   return JSON.parse(match[1]);
 }
 
-const noShowRaw = jsonFromMarkdown('RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG) (1).md');
+const noShowRaw = jsonFromMarkdown('RydeResolve Sample Dataset — DISP-002 No-Show Charge Dispute (SG).md');
 const routeRaw = jsonFromMarkdown('RydeResolve Route Deviation Dataset — DISP-001.md');
 const fareRaw = jsonFromMarkdown('Document 1 — Fare Dispute Sample Data (JSON).md');
 
