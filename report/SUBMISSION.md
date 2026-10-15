@@ -4,6 +4,8 @@
 
 **Live application:** [Open RydeResolve](https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/)
 
+**Demo video:** [Watch on YouTube](https://www.youtube.com/watch?v=rD7mKcZb83A)
+
 ---
 
 ## 1. Project Title and Blurb
@@ -418,7 +420,7 @@ This is a hackathon prototype. The limits below are stated plainly so that the d
 
 ## 11. Submission Materials and Status
 
-Items marked **TO ADD** depend on teammates or on final screenshots and are intentionally left open.
+Every handbook item, required and optional, is now in place.
 
 | Handbook item | Status | Where |
 |---|---|---|
@@ -432,5 +434,5 @@ Items marked **TO ADD** depend on teammates or on final screenshots and are inte
 | CodeBuddy / WorkBuddy conversation history | Done: two exported CodeBuddy chats | `proof/Review the recent changes in …json`; `proof/conversation_export_codebuddy.json` |
 | At least 3 chat screenshots from CodeBuddy / WorkBuddy | Done: 11 screenshots — two CodeBuddy chats and nine pages of the WorkBuddy conversation (also as one PDF) | `proof/screenshots/01-…` to `03-…`; `proof/screencapture-workbuddy-…pdf` |
 | Application screenshots | Done: DISP-003 (escalated to a human, S$6.66 refund held as a draft; retaken on 15 October 2026 under Policy v2.1) and DISP-002 (no-show; taken before Policy v2.1) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard (review queue, and sorted by priority); the submit page | `proof/screenshots/04-…` to `13-…` |
-| Demo video, 5–8 minutes (optional) | **TO ADD** | — |
+| Demo video, 5–8 minutes (optional) | Done | https://www.youtube.com/watch?v=rD7mKcZb83A |
 | Live project link (optional, earns bonus points) | Done: deployed with WorkBuddy on Tencent Cloud (Singapore region). Cases are kept in memory, so a server restart returns the app to its built-in sample cases | https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/ |

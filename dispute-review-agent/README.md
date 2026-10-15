@@ -6,6 +6,8 @@ are answered from that evidence with cited sources.
 
 **Live application:** [Open RydeResolve](https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/)
 
+**Demo video:** [Watch on YouTube](https://www.youtube.com/watch?v=rD7mKcZb83A)
+
 - **Frontend:** React 19 + Vite + TanStack Query + shadcn/ui + Tailwind CSS 4 (`frontend/`, port 5173)
 - **Backend:** Express + TypeScript + Zod (`backend/`, port 3000, API under `/api`)
 - **Knowledge base:** PostgreSQL + pgvector, local models via Ollama — all open source, no API keys
