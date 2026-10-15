@@ -14,6 +14,7 @@ import type {
 
 export const typeLabels: Record<DisputeType, string> = {
   route_deviation: 'Route deviation',
+  fare_dispute: 'Fare / surge pricing',
   no_show_charge: 'No-show charge',
   property_damage: 'Property damage',
   safety_accident: 'Safety incident',

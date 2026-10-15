@@ -2,8 +2,14 @@
  * Dispute Review — turn a sample dataset (e.g. DISP-002, DISP-003) into a dashboard case.
  */
 
-import { isNoShowDataset, type SampleDataset } from './agents/dataset';
+import {
+  isFareDisputeDataset,
+  isLegacyRouteDeviationDataset,
+  isNoShowDataset,
+  type SampleDataset,
+} from './agents/dataset';
 import { analyzeRoute } from './agents/route-analysis';
+import { RYDE_POLICY_V2_1 } from './agents/policy';
 import type { CreateDisputeDTO, NewEvidence, TripInfo } from './types';
 
 function clock(timestamp: string): string {
@@ -55,14 +61,14 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
   let trip: TripInfo;
 
   if (isNoShowDataset(data)) {
-    const p = data.cancellation_policy;
     add({
       party: 'platform',
       kind: 'text',
-      title: 'Cancellation policy',
+      title: 'Ryde Dispute Resolution Policy v2.1 — no-show',
       content:
-        `Free wait: ${p.free_wait_time_min} minutes; cancellation fee after wait: ${p.cancellation_fee_after_wait}; ` +
-        `no-show threshold: ${p.no_show_threshold_min} minutes; fee recipient: ${p.fee_goes_to}`,
+        `Wait from scheduled pickup: ${RYDE_POLICY_V2_1.no_show.free_wait_time_min} minutes; ` +
+        `fee: SGD ${RYDE_POLICY_V2_1.no_show.cancellation_fee.toFixed(2)} paid to the driver; ` +
+        `required contact: at least one in-app message and one in-app call.`,
     });
     const td = data.trip_data;
     trip = {
@@ -74,7 +80,33 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
       distance: 0,
       ...car,
     };
-  } else {
+  } else if (isFareDisputeDataset(data)) {
+    const td = data.trip_data;
+    const comparison = data.fare_breakdown.comparison;
+    add({
+      party: 'platform', kind: 'payment', title: 'Fare and surge comparison',
+      content:
+        `Upfront quote: SGD ${td.upfront_quote.toFixed(2)}; actual fare: SGD ${td.actual_fare.toFixed(2)}; ` +
+        `difference: SGD ${td.fare_difference.toFixed(2)}. ` +
+        `Surge ${data.surge_pricing_log.quote_time_surge}x → ${data.surge_pricing_log.trip_start_surge}x; ` +
+        `rider notified: ${data.surge_pricing_log.rider_notified}; root cause: ${comparison.root_cause}.`,
+    });
+    add({
+      party: 'platform', kind: 'text', title: 'Ryde Dispute Resolution Policy v2.1',
+      content:
+        `An unnotified surge increase requires refund of actual fare minus upfront quote. ` +
+        `Surge-exempt components: ${RYDE_POLICY_V2_1.fare_and_surge.surge_exempt_components.join(', ')}.`,
+    });
+    trip = {
+      pickupLocation: td.pickup_location.name,
+      dropoffLocation: td.dropoff_location.name,
+      pickupTime: td.start_time,
+      dropoffTime: td.end_time,
+      fare: td.actual_fare,
+      distance: 0,
+      ...car,
+    };
+  } else if (isLegacyRouteDeviationDataset(data)) {
     const td = data.trip_data;
     const fb = td.fare_breakdown;
     const route = data.recommended_route;
@@ -117,6 +149,49 @@ export function datasetToCreateDTO(data: SampleDataset): CreateDisputeDTO {
       pickupTime: td.pickup_time,
       dropoffTime: td.dropoff_time,
       fare: td.final_fare,
+      distance: td.actual_distance_km,
+      ...car,
+    };
+  } else {
+    const td = data.trip_data;
+    const fb = data.fare_breakdown;
+    const route = data.optimal_route;
+    add({
+      party: 'platform', kind: 'payment', title: 'Fare breakdown',
+      content:
+        `Estimated fare: SGD ${td.estimated_fare.toFixed(2)}; actual fare: SGD ${td.actual_fare.toFixed(2)}; ` +
+        `excess: SGD ${td.excess_fare.toFixed(2)}; excess distance fare: SGD ${fb.excess_distance_fare.toFixed(2)}; ` +
+        `excess tolls: SGD ${fb.excess_tolls.toFixed(2)}.`,
+    });
+    add({
+      party: 'platform', kind: 'gps', title: `Recommended route (${route.route_name})`,
+      content:
+        `${route.estimated_distance_km} km, ${route.estimated_duration_min} min\n` +
+        route.waypoints.map((waypoint) =>
+          `${waypoint.lat}, ${waypoint.lng}${typeof waypoint.location_desc === 'string' ? ` | ${waypoint.location_desc}` : ''}`
+        ).join('\n'),
+    });
+    add({
+      party: 'platform', kind: 'text', title: 'Traffic evidence',
+      content: JSON.stringify({ conditions: data.traffic_conditions, analysis: data.traffic_analysis }),
+    });
+    add({
+      party: 'platform', kind: 'text', title: 'Route analysis (computed from GPS and fare records)',
+      content: analyzeRoute(data).findings.join('\n'),
+    });
+    add({
+      party: 'platform', kind: 'text', title: 'Ryde Dispute Resolution Policy v2.1',
+      content:
+        `Driver notice is required before or at deviation. Distance tolerance: ` +
+        `${RYDE_POLICY_V2_1.route_deviation.distance_tolerance_km} km; ` +
+        `human review above ${RYDE_POLICY_V2_1.route_deviation.human_review_above_km} km.`,
+    });
+    trip = {
+      pickupLocation: td.pickup_location.name,
+      dropoffLocation: td.dropoff_location.name,
+      pickupTime: td.start_time,
+      dropoffTime: td.end_time,
+      fare: td.actual_fare,
       distance: td.actual_distance_km,
       ...car,
     };

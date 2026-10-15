@@ -8,7 +8,13 @@ import {
 } from './shared';
 import { createLogger } from '../../../config/logger';
 import type { ChecklistAnswer, Resolution } from '../types';
-import { isDataset, isNoShowDataset, isRouteDeviationDataset } from './dataset';
+import {
+  isDataset,
+  isFareDisputeDataset,
+  isLegacyRouteDeviationDataset,
+  isNoShowDataset,
+  isStructuredRouteDeviationDataset,
+} from './dataset';
 import type { Precedent } from '../precedents';
 import { judgeChecklist, type ChecklistItem } from './checklist';
 
@@ -43,7 +49,10 @@ function currency(input: AgentInput): Resolution['currency'] {
 /** The charge under dispute: no refund or compensation may exceed it. */
 function disputedAmount(input: AgentInput): number {
   if (isNoShowDataset(input)) return input.trip_data.cancellation_fee;
-  if (isRouteDeviationDataset(input)) return input.trip_data.final_fare;
+  if (isLegacyRouteDeviationDataset(input)) return input.trip_data.final_fare;
+  if (isStructuredRouteDeviationDataset(input)) return input.trip_data.excess_fare;
+  if (isFareDisputeDataset(input)) return input.trip_data.fare_difference;
+  if ('dispute_ticket' in input) return 0;
   return input.trip.fare;
 }
 
@@ -121,7 +130,9 @@ For no-show charges, explicitly explain whether the fee is upheld, reversed or i
 the SGD amount, and who receives it. If deciding despite conflicting timer records, explain
 your policy interpretation and lower confidence as appropriate.
 For route deviations, decide whether the deviation was justified (rider request or agreement, a
-policy exemption supported by the record) and compute any refund from fare_policy.refund_basis.
+policy exemption supported by the record), whether notice was given, and the excess-distance refund.
+For fare disputes, compare the binding upfront quote with the actual fare and refund an unnotified
+surge differential under Policy v2.1 §3. Safety-related disputes receive no AI merits ruling.
 resolution is the concrete outcome, in ${currency(record)}:
 - full_refund: return the whole disputed charge to the rider
 - partial_refund: return part of it to the rider (e.g. the overcharge above the upfront estimate)

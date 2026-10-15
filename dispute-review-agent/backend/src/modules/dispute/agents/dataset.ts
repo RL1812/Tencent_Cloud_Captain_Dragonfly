@@ -114,11 +114,147 @@ export const routeDeviationDatasetSchema = z.object({
   }),
 }).superRefine(sameTripAndParties);
 
-export const sampleDatasetSchema = z.union([noShowDatasetSchema, routeDeviationDatasetSchema]);
+const documentProfile = {
+  ...profile,
+  dispute_history: z.object({}).passthrough(),
+};
+
+const documentGpsPoint = z.object({
+  timestamp, lat, lng, speed_kmh: z.number().nonnegative(),
+}).passthrough();
+
+const documentChat = z.object({
+  timestamp,
+  sender: z.enum(['rider', 'driver', 'system']),
+  message: z.string().min(1),
+}).passthrough();
+
+/** The newly supplied DISP-001 document. Its proposed ruling is intentionally discarded. */
+const structuredRouteRawSchema = z.object({
+  dispute_ticket: ticket('route_deviation').passthrough(),
+  rider_profile: z.object({
+    ...documentProfile, rider_id: z.string().min(1), payment_method: z.string(),
+  }).passthrough(),
+  driver_profile: z.object({
+    ...documentProfile, driver_id: z.string().min(1), vehicle: z.string(),
+  }).passthrough(),
+  trip_data: z.object({
+    ...tripParties,
+    start_time: timestamp, end_time: timestamp,
+    estimated_duration_min: z.number().positive(), actual_duration_min: z.number().nonnegative(),
+    estimated_distance_km: z.number().positive(), actual_distance_km: z.number().nonnegative(),
+    estimated_fare: money, actual_fare: money,
+    excess_distance_km: z.number(), excess_fare: money, route_deviated: z.boolean(),
+  }).passthrough(),
+  fare_breakdown: z.object({
+    estimated: z.object({ total: money }).passthrough(),
+    actual: z.object({ total: money }).passthrough(),
+    delta: z.object({ total: z.number() }).passthrough(),
+    excess_distance_fare: money,
+    excess_tolls: money,
+    notes: z.string(),
+  }).passthrough(),
+  gps_telemetry: z.array(documentGpsPoint).min(2),
+  optimal_route: z.object({
+    route_name: z.string().min(1),
+    estimated_distance_km: z.number().positive(),
+    estimated_duration_min: z.number().positive(),
+    waypoints: z.array(z.object({ lat, lng }).passthrough()).min(2),
+  }).passthrough(),
+  chat_logs: z.array(documentChat),
+  chat_log_analysis: z.object({
+    route_notification_sent: z.boolean(),
+    rider_inquired_about_route: z.boolean(),
+  }).passthrough(),
+  traffic_conditions: z.array(z.object({}).passthrough()),
+  traffic_analysis: z.object({
+    reroute_justified: z.boolean(),
+    notification_failure: z.boolean(),
+  }).passthrough(),
+  recommended_ruling: z.unknown().optional(),
+}).passthrough().superRefine(sameTripAndParties);
+
+export const structuredRouteDeviationDatasetSchema = structuredRouteRawSchema.transform((data) => {
+  const { recommended_ruling: _answerKey, ...record } = data;
+  return {
+    ...record,
+    gps_telemetry: record.gps_telemetry.map((point) => ({
+      ...point,
+      status: typeof point.location_desc === 'string' ? point.location_desc : 'recorded',
+    })),
+    chat_logs: record.chat_logs.map((entry) => ({
+      ...entry, type: 'message' as const, content: entry.message,
+    })),
+    app_events: [] as { timestamp: string; event_type: string; details: string }[],
+  };
+});
+
+/** The newly supplied DISP-003 surge-pricing document. */
+const fareDisputeRawSchema = z.object({
+  dispute_ticket: ticket('fare_dispute').passthrough(),
+  rider_profile: z.object({
+    ...documentProfile, rider_id: z.string().min(1), payment_method: z.string(),
+  }).passthrough(),
+  driver_profile: z.object({
+    ...documentProfile, driver_id: z.string().min(1), vehicle: z.string(),
+  }).passthrough(),
+  trip_data: z.object({
+    ...tripParties,
+    start_time: timestamp, end_time: timestamp,
+    estimated_duration_min: z.number().positive(), actual_duration_min: z.number().nonnegative(),
+    upfront_quote: money, actual_fare: money, fare_difference: z.number(),
+  }).passthrough(),
+  fare_breakdown: z.object({
+    upfront_quote: z.object({
+      surge_multiplier: z.number().positive(), surge_amount: money,
+      total: money, surgeable_subtotal: money,
+    }).passthrough(),
+    actual_fare: z.object({
+      surge_multiplier: z.number().positive(), surge_amount: money,
+      total: money, surgeable_subtotal: money,
+    }).passthrough(),
+    comparison: z.object({
+      surge_amount_difference: z.number(), total_difference: z.number(),
+      root_cause: z.string(), booking_fee_surge_exempt: z.boolean(),
+    }).passthrough(),
+  }).passthrough(),
+  gps_telemetry: z.array(documentGpsPoint).min(2),
+  chat_logs: z.array(documentChat),
+  surge_pricing_log: z.object({
+    quote_time_surge: z.number().positive(),
+    trip_start_surge: z.number().positive(),
+    surge_activated_at: timestamp,
+    rider_notified: z.boolean(),
+    notification_method: z.string().nullable(),
+    notification_timestamp: timestamp.nullable(),
+    reason: z.string(),
+  }).passthrough(),
+}).passthrough().superRefine(sameTripAndParties);
+
+export const fareDisputeDatasetSchema = fareDisputeRawSchema.transform((record) => ({
+  ...record,
+  gps_telemetry: record.gps_telemetry.map((point) => ({
+    ...point, status: 'recorded',
+  })),
+  chat_logs: record.chat_logs.map((entry) => ({
+    ...entry, type: 'message' as const, content: entry.message,
+  })),
+  app_events: [] as { timestamp: string; event_type: string; details: string }[],
+}));
+
+export const sampleDatasetSchema = z.union([
+  noShowDatasetSchema,
+  routeDeviationDatasetSchema,
+  structuredRouteDeviationDatasetSchema,
+  fareDisputeDatasetSchema,
+]);
 
 export type NoShowDataset = z.infer<typeof noShowDatasetSchema>;
-export type RouteDeviationDataset = z.infer<typeof routeDeviationDatasetSchema>;
-export type SampleDataset = NoShowDataset | RouteDeviationDataset;
+export type LegacyRouteDeviationDataset = z.infer<typeof routeDeviationDatasetSchema>;
+export type StructuredRouteDeviationDataset = z.infer<typeof structuredRouteDeviationDatasetSchema>;
+export type FareDisputeDataset = z.infer<typeof fareDisputeDatasetSchema>;
+export type RouteDeviationDataset = LegacyRouteDeviationDataset | StructuredRouteDeviationDataset;
+export type SampleDataset = NoShowDataset | RouteDeviationDataset | FareDisputeDataset;
 
 export function isDataset(input: object): input is SampleDataset {
   return 'dispute_ticket' in input &&
@@ -136,9 +272,23 @@ export function isRouteDeviationDataset(input: object): input is RouteDeviationD
   return isDataset(input) && input.dispute_ticket.dispute_type === 'route_deviation';
 }
 
+export function isLegacyRouteDeviationDataset(input: object): input is LegacyRouteDeviationDataset {
+  return isRouteDeviationDataset(input) && 'recommended_route' in input;
+}
+
+export function isStructuredRouteDeviationDataset(input: object): input is StructuredRouteDeviationDataset {
+  return isRouteDeviationDataset(input) && 'optimal_route' in input;
+}
+
+export function isFareDisputeDataset(input: object): input is FareDisputeDataset {
+  return isDataset(input) && input.dispute_ticket.dispute_type === 'fare_dispute';
+}
+
 /** The dataset section that holds the policy agents must cite, e.g. "/cancellation_policy/". */
 export function policyPrefix(input: object): string | null {
   if (isNoShowDataset(input)) return '/cancellation_policy/';
-  if (isRouteDeviationDataset(input)) return '/fare_policy/';
+  if (isLegacyRouteDeviationDataset(input)) return '/fare_policy/';
+  if (isStructuredRouteDeviationDataset(input)) return '/applicable_policy/route_deviation/';
+  if (isFareDisputeDataset(input)) return '/applicable_policy/fare_and_surge/';
   return null;
 }

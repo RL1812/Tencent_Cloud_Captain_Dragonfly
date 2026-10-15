@@ -6,6 +6,7 @@ export type DisputeStatus = 'pending' | 'under_review' | 'resolved';
 export type DisputePriority = 'low' | 'medium' | 'high' | 'urgent';
 export type DisputeType =
   | 'route_deviation'
+  | 'fare_dispute'
   | 'no_show_charge'
   | 'property_damage'
   | 'safety_accident';

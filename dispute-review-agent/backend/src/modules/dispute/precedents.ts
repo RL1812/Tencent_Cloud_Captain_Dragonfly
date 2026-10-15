@@ -19,7 +19,7 @@ const recommendation = z.enum(['driver', 'passenger', 'shared', 'inconclusive'])
 
 const precedentSchema = z.object({
   caseNumber: z.string(),
-  type: z.enum(['route_deviation', 'no_show_charge', 'property_damage', 'safety_accident']),
+  type: z.enum(['route_deviation', 'fare_dispute', 'no_show_charge', 'property_damage', 'safety_accident']),
   title: z.string(),
   facts: z.string(),
   aiRecommendation: recommendation.optional(),

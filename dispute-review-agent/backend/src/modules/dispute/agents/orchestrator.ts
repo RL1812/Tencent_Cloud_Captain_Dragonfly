@@ -56,7 +56,7 @@ export const disputeReviewGraph = new StateGraph(ReviewState)
     ),
   }))
   .addNode('confidence_escalation', (state) => ({
-    escalation: runEscalationAgent(state.ruling),
+    escalation: runEscalationAgent(state.ruling, state.input),
   }))
   .addNode('automatic_resolution', () => ({
     workflowStatus: 'auto_resolved' as const,

@@ -1,6 +1,10 @@
 import { chatCompletion } from '../../../lib/llm-chat';
 import { advocateOutputSchema, type AgentInput, type AdvocateCase, type AdvocateRole } from './contracts';
-import { isRouteDeviationDataset } from './dataset';
+import {
+  isFareDisputeDataset,
+  isLegacyRouteDeviationDataset,
+  isStructuredRouteDeviationDataset,
+} from './dataset';
 import {
   checkAdvocateSources, disputeId, evidenceInstructions,
   formatCaseContext, groundedPolicyArguments, parseJsonObject, validateInput,
@@ -14,9 +18,13 @@ export async function runAdvocate(input: AgentInput, agent: AdvocateRole): Promi
   const record = validateInput(input);
   const party = agent === 'rider_advocate' ? 'rider' : 'driver';
   // Example citations that exist in this kind of record
-  const policyExample = isRouteDeviationDataset(record)
+  const policyExample = isLegacyRouteDeviationDataset(record)
     ? '["/fare_policy/deviation_tolerance_pct","/computed_route_analysis/deviation_pct"]'
-    : '["/cancellation_policy/free_wait_time_min","/trip_data/driver_wait_start"]';
+    : isStructuredRouteDeviationDataset(record)
+      ? '["/applicable_policy/route_deviation/distance_tolerance_km","/computed_route_analysis/extra_distance_km"]'
+      : isFareDisputeDataset(record)
+        ? '["/applicable_policy/fare_and_surge/unnotified_surge_refund","/trip_data/fare_difference"]'
+        : '["/applicable_policy/no_show/free_wait_time_min","/trip_data/cancellation_time"]';
   const prompt = `You are the ${party} advocate. Gather relevant material from the provided
 record and present the strongest honest case for the ${party}, acknowledging adverse evidence.
 ${evidenceInstructions}

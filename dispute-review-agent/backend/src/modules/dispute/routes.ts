@@ -88,6 +88,7 @@ const createDisputeSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   type: z.enum([
     'route_deviation',
+    'fare_dispute',
     'no_show_charge',
     'property_damage',
     'safety_accident',

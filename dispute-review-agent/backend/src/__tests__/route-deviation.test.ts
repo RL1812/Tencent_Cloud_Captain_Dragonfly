@@ -142,7 +142,7 @@ test('a full review returns a structured SGD resolution and a notice for each pa
   });
   expect(result.partyNotices).toEqual(judge.partyNotices);
   expect(result.checklist).toHaveLength(judgeChecklist(dataset).length);
-  expect(result.workflowStatus).toBe('auto_resolved');
+  expect(result.workflowStatus).toBe('human_intervention_required');
   const judgePrompt = chat.mock.calls[2][0][0].content;
   expect(judgePrompt).toContain('31.4 SGD');
 });

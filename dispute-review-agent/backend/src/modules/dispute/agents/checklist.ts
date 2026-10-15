@@ -19,17 +19,24 @@ const COMMON = [
 const BY_TYPE: Record<DisputeType, string[]> = {
   no_show_charge: [
     'Driver arrival time compared with the scheduled pickup time',
-    'Wait start under each possible basis (driver arrival, scheduled pickup, app timer start), and whether the supplied policy says which applies',
-    'Elapsed wait at cancellation computed from each of those start times, compared with the policy thresholds; conflict = true if the bases lead to different outcomes',
-    'Contact attempts by the driver and responses by the rider',
-    'Evidence of where the rider actually was',
+    'Whether the driver waited at least five minutes from the scheduled pickup time before cancelling',
+    'Whether the driver made both required contact attempts: at least one in-app message and one in-app call',
+    'Evidence that the driver waited at the booked pickup location',
+    'Whether the fixed SGD 5 fee was applied and assigned to the correct recipient',
   ],
   route_deviation: [
-    'Actual route compared with the recommended route (distance, how far and where the GPS track left it)',
-    'Unexpected stops, and trip duration compared with the estimate',
-    'Final fare compared with the upfront estimate, and whether the fare breakdown (surge, promo code, components) is valid',
-    'Whether the rider requested or agreed to the route change, or another policy exemption (e.g. road closure, platform reroute) is supported by the record',
-    'Refund or adjustment owed under the supplied fare policy, with the calculation',
+    'Actual route compared with the recommended route, including the excess distance in kilometres',
+    'Whether traffic or a road closure justifies the deviation using contemporaneous traffic evidence',
+    'Whether the driver informed the rider before or at the deviation, and whether the rider acknowledged it',
+    'Whether the deviation exceeds the one-kilometre refund tolerance or two-kilometre human-review threshold',
+    'Excess distance fare refundable under Policy v2.1, with the calculation',
+  ],
+  fare_dispute: [
+    'Upfront quote compared with the actual fare and the exact disputed difference',
+    'Surge multiplier at quote time compared with the multiplier at trip start',
+    'Whether the rider received the required surge-change notification before or at pickup',
+    'Whether the booking fee remained surge-exempt',
+    'Refundable surge differential under Policy v2.1, with the calculation',
   ],
   property_damage: [
     'Evidence that the damage happened during this trip',

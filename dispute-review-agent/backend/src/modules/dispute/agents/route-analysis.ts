@@ -1,4 +1,8 @@
-import type { RouteDeviationDataset } from './dataset';
+import {
+  isLegacyRouteDeviationDataset,
+  type RouteDeviationDataset,
+} from './dataset';
+import { RYDE_POLICY_V2_1 } from './policy';
 
 /**
  * Deterministic telemetry checks for route-deviation disputes, computed from the
@@ -29,6 +33,7 @@ export interface RouteAnalysis {
   fare_difference_pct: number | null;
   /** (base + distance + time) x surge + booking fee - promo discount */
   breakdown_computed_total: number;
+  breakdown_available: boolean;
   breakdown_matches_total: boolean;
   total_matches_final_fare: boolean;
   findings: string[];
@@ -77,11 +82,21 @@ function distanceToRouteM(p: Point, route: Point[]): number {
 }
 
 export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
+  const legacy = isLegacyRouteDeviationDataset(data);
   const trip = data.trip_data;
-  const route = data.recommended_route;
-  const fb = trip.fare_breakdown;
-  const start = Date.parse(trip.pickup_time);
-  const end = Date.parse(trip.dropoff_time);
+  const route = legacy
+    ? data.recommended_route
+    : {
+        distance_km: data.optimal_route.estimated_distance_km,
+        duration_min: data.optimal_route.estimated_duration_min,
+        waypoints: data.optimal_route.waypoints,
+      };
+  const pickupTime = legacy ? data.trip_data.pickup_time : data.trip_data.start_time;
+  const dropoffTime = legacy ? data.trip_data.dropoff_time : data.trip_data.end_time;
+  const finalFare = legacy ? data.trip_data.final_fare : data.trip_data.actual_fare;
+  const fareBreakdown = legacy ? data.trip_data.fare_breakdown : null;
+  const start = Date.parse(pickupTime);
+  const end = Date.parse(dropoffTime);
 
   // Only points recorded during the trip, keeping their index for citations
   const points = data.gps_telemetry
@@ -117,13 +132,17 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
 
   const extraKm = trip.actual_distance_km - route.distance_km;
   const deviationPct = (extraKm / route.distance_km) * 100;
-  const actualMin = minutesBetween(trip.pickup_time, trip.dropoff_time);
-  const fareDiff = trip.final_fare - trip.estimated_fare;
-  const computedTotal = (fb.base_fare + fb.distance_fare + fb.time_fare) * fb.surge_multiplier
-    + fb.booking_fee - fb.promo_discount;
-  const breakdownOk = Math.abs(computedTotal - fb.total) < CENT;
-  const totalOk = Math.abs(fb.total - trip.final_fare) < CENT;
-  const tolerance = data.fare_policy.deviation_tolerance_pct;
+  const actualMin = minutesBetween(pickupTime, dropoffTime);
+  const fareDiff = finalFare - trip.estimated_fare;
+  const computedTotal = fareBreakdown
+    ? (fareBreakdown.base_fare + fareBreakdown.distance_fare + fareBreakdown.time_fare) * fareBreakdown.surge_multiplier
+      + fareBreakdown.booking_fee - fareBreakdown.promo_discount
+    : finalFare;
+  const breakdownOk = fareBreakdown ? Math.abs(computedTotal - fareBreakdown.total) < CENT : true;
+  const totalOk = fareBreakdown ? Math.abs(fareBreakdown.total - finalFare) < CENT : true;
+  const tolerance = legacy
+    ? data.fare_policy.deviation_tolerance_pct
+    : (RYDE_POLICY_V2_1.route_deviation.distance_tolerance_km / route.distance_km) * 100;
   const gpsPathKm = round(pathM / 1000);
 
   const findings: string[] = [];
@@ -133,7 +152,8 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
   } else {
     findings.push(
       `Metered distance ${trip.actual_distance_km} km vs recommended ${route.distance_km} km ` +
-        `(${extraKm >= 0 ? '+' : ''}${round(extraKm)} km, ${round(deviationPct)}%; policy tolerance ${tolerance}%).`
+        `(${extraKm >= 0 ? '+' : ''}${round(extraKm)} km, ${round(deviationPct)}%; policy tolerance ` +
+        `${legacy ? `${tolerance}%` : `${RYDE_POLICY_V2_1.route_deviation.distance_tolerance_km} km`}).`
     );
     findings.push(
       offRoute.length
@@ -151,14 +171,15 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
     findings.push(`Trip took ${round(actualMin)} min vs ${trip.estimated_duration_min} min estimated.`);
     findings.push(...stops.map((s) => `Stationary mid-trip from ${s.from} to ${s.to} (${s.minutes} min).`));
     findings.push(
-      `Final fare ${money(trip.final_fare)} vs upfront estimate ${money(trip.estimated_fare)} ` +
+      `Final fare ${money(finalFare)} vs upfront estimate ${money(trip.estimated_fare)} ` +
         `(${fareDiff >= 0 ? '+' : ''}${money(fareDiff)}).`
     );
   }
-  if (!breakdownOk) findings.push(`Fare components add up to ${money(computedTotal)}, not the stated total ${money(fb.total)}.`);
-  if (!totalOk) findings.push(`Breakdown total ${money(fb.total)} differs from the charged fare ${money(trip.final_fare)}.`);
-  if (fb.surge_multiplier > 1) findings.push(`Surge multiplier ${fb.surge_multiplier} applied.`);
-  if (fb.promo_code) findings.push(`Promo code ${fb.promo_code} applied (discount ${money(fb.promo_discount)}).`);
+  if (fareBreakdown && !breakdownOk) findings.push(`Fare components add up to ${money(computedTotal)}, not the stated total ${money(fareBreakdown.total)}.`);
+  if (fareBreakdown && !totalOk) findings.push(`Breakdown total ${money(fareBreakdown.total)} differs from the charged fare ${money(finalFare)}.`);
+  if (fareBreakdown?.surge_multiplier && fareBreakdown.surge_multiplier > 1) findings.push(`Surge multiplier ${fareBreakdown.surge_multiplier} applied.`);
+  if (fareBreakdown?.promo_code) findings.push(`Promo code ${fareBreakdown.promo_code} applied (discount ${money(fareBreakdown.promo_discount)}).`);
+  if (!fareBreakdown) findings.push('Only an aggregate fare breakdown was supplied; component arithmetic was not independently verified.');
 
   return {
     recommended_distance_km: route.distance_km,
@@ -166,7 +187,9 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
     extra_distance_km: round(extraKm),
     deviation_pct: round(deviationPct),
     tolerance_pct: tolerance,
-    exceeds_tolerance: deviationPct > tolerance,
+    exceeds_tolerance: legacy
+      ? deviationPct > tolerance
+      : extraKm > RYDE_POLICY_V2_1.route_deviation.distance_tolerance_km,
     gps_path_distance_km: gpsPathKm,
     max_off_route_m: offsets.length ? Math.round(Math.max(...offsets.map((o) => o.m))) : 0,
     off_route_points: offRoute.length,
@@ -176,10 +199,11 @@ export function analyzeRoute(data: RouteDeviationDataset): RouteAnalysis {
     extra_duration_min: round(actualMin - trip.estimated_duration_min),
     unexpected_stops: stops,
     estimated_fare: money(trip.estimated_fare),
-    final_fare: money(trip.final_fare),
+    final_fare: money(finalFare),
     fare_difference: money(fareDiff),
     fare_difference_pct: trip.estimated_fare > 0 ? round((fareDiff / trip.estimated_fare) * 100) : null,
     breakdown_computed_total: money(computedTotal),
+    breakdown_available: fareBreakdown !== null,
     breakdown_matches_total: breakdownOk,
     total_matches_final_fare: totalOk,
     findings,

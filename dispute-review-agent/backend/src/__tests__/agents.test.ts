@@ -135,7 +135,7 @@ test('both advocates receive full records and the Judge receives both validated 
     agent: 'prioritization_agent', priority: 'high',
   });
   expect(result.escalation).toMatchObject({
-    agent: 'escalation_agent', needsHuman: true, confidenceThreshold: 60,
+    agent: 'escalation_agent', needsHuman: true, confidenceThreshold: 95,
   });
   expect(result.evidenceValidation).toMatchObject({
     agent: 'evidence_validation_agent', status: 'ready',
