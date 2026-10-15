@@ -257,15 +257,15 @@ All claims below are supported by the repository or handbook. No results are inv
 
 5. **Fraud & Bad-Faith Detection Agent** — Rates the driver's risk **high** (account risk flag, a high share of past disputes decided against the driver, a short account history with several disputes, and only the driver is risk-flagged). The Judge receives these as context only.
 
-6. **Judge (LLM)** — Both advocates produced validated LLM output, so the Judge runs. In our test run on 15 October 2026 it answered the route-deviation checklist:
+6. **Judge (LLM)** — Both advocates produced validated LLM output, so the Judge runs. In the run shown in screenshots `04`–`06` (15 October 2026) it answered the route-deviation checklist:
    - C1: Actual vs. recommended route — 17.6 km vs 9.8 km, 7.8 km excess.
    - C2: Whether traffic or a road closure justifies the deviation — app events record no traffic incident on the CTE (**conflict** with the driver's claim).
    - C3: Whether the driver told the rider before or at the deviation — no; the rider raised it.
    - C4: The 1 km refund tolerance and the 2 km human-review threshold — 7.8 km exceeds both.
-   - C5: Refundable excess-distance fare — S$31.40 charged vs S$19.00 binding upfront estimate.
+   - C5: Refundable excess-distance fare — Policy v2.1 refunds the fare for the excess distance, not the whole difference from the S$19.00 estimate.
    - C6–C7: Statement-vs-record conflicts (the driver's traffic claim vs. platform logs — **conflict**) and timestamp conflicts (none).
 
-   The Judge ruled for the rider at **95% confidence** with a **partial refund of S$12.40** (S$31.40 − S$19.00), within the disputed charge. Party notices are generated for both rider and driver in plain language.
+   The Judge upheld the rider at **85% confidence** with a **partial refund of S$6.66**: the excess-distance fare under Policy v2.1 (7.8 km excess ÷ 17.6 km metered × S$15.04 distance fare), within the disputed charge. Party notices are generated for both rider and driver in plain language. In another run the same day the Judge instead refunded the full S$12.40 difference from the upfront estimate, following the dataset's older fare policy rather than Policy v2.1; the reviewer sees the calculation in the resolution and can correct it.
 
 7. **Escalation Agent** — The 7.8 km deviation exceeds Policy v2.1's 2 km human-review threshold, so the case is **escalated to a human reviewer** however confident the Judge is (`workflowStatus = human_intervention_required`, `status = under_review`). The party notices are held as drafts until the reviewer decides.
 
@@ -321,7 +321,9 @@ The running system uses **Google Gemini** (free tier: `gemini-3.8-flash` → `ge
 
 ### WorkBuddy / CodeBuddy usage
 
-Per our WorkBuddy session plan, WorkBuddy/CodeBuddy was used for:
+The project started in **WorkBuddy**: asked to set up an agent that reviews driver–passenger disputes, WorkBuddy AI built the first version of the app (dispute dashboard, case submission form, AI review, case detail page; React 19, Express, Zod, TanStack Query and shadcn/ui) on Tencent Cloud Studio. That conversation is in the WorkBuddy page capture listed below, and the generated app is the starting point of the repository.
+
+Per our WorkBuddy session plan, WorkBuddy/CodeBuddy was then used for:
 
 1. **Code review** of the agent code (route-analysis.ts, judge.ts, dataset.ts) and frontend (AgentReview.tsx) — checking for bugs, edge cases, and running backend tests. This resulted in commit `7997e7e` ("Handle edge cases in dispute agents and store from CodeBuddy review"), which refined route-analysis, judge and dataset handling, hardened store logic, surfaced additional review details in the frontend, updated docs, and added the WorkBuddy session proof.
 2. **Localization** — rewriting seed cases from Chinese/Didi to English/Singapore Ryde cases with SGD fares, and translating `docs/product/features.md` to English.
@@ -331,8 +333,9 @@ Per our WorkBuddy session plan, WorkBuddy/CodeBuddy was used for:
 6. **Stretch goal** — adding the Fraud & Bad-Faith Detection agent (commit `5a17a53`).
 
 Proof of usage is collected in `proof/`:
-- `screenshots/screencapture-workbuddy-ai-app-task-2100073428441546752-2026-10-14-10_57_47.pdf` — screenshot of a WorkBuddy session
+- `screencapture-workbuddy-ai-app-task-2100073428441546752-2026-10-14-10_57_47.pdf` — 9-page capture of the WorkBuddy conversation that built the first version of the app
 - `screenshots/01-codebuddy-write-report.png`, `screenshots/02-codebuddy-fix-report.png` — CodeBuddy sessions
+- `screenshots/03-workbuddy-chat-page-1.png` to `-9.png` — the WorkBuddy conversation above, one image per page (it shows WorkBuddy building the app and deploying it to Cloud Studio)
 - `Review the recent changes in dispute-review-agent_backend_src_modules_dispute_ag_20261014115706.json` — exported chat history of the code review session
 
 ### Git history highlights
@@ -425,7 +428,7 @@ Items marked **TO ADD** depend on teammates or on final screenshots and are inte
 | Source code | Done | GitHub repository, `main` branch |
 | Which tool wrote the core agents | Done: WorkBuddy and CodeBuddy, assisted by GPT, Gemini, Codex and Claude (as stated by the team) | Section 7 |
 | CodeBuddy / WorkBuddy conversation history | Done: exported CodeBuddy chat (code-review session) | `proof/Review the recent changes in …json` |
-| At least 3 chat screenshots from CodeBuddy / WorkBuddy | Done: two CodeBuddy screenshots and one WorkBuddy page capture (PDF) | `proof/screenshots/` |
-| Application screenshots | Done, but taken before Policy v2.1 and the fraud agent (DISP-003 then resolved automatically; it now goes to a human): DISP-003 (S$12.40 refund) and DISP-002 (no-show) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard (review queue, and sorted by priority); the submit page | `proof/screenshots/04-…` to `13-…` |
+| At least 3 chat screenshots from CodeBuddy / WorkBuddy | Done: 11 screenshots — two CodeBuddy chats and nine pages of the WorkBuddy conversation (also as one PDF) | `proof/screenshots/01-…` to `03-…`; `proof/screencapture-workbuddy-…pdf` |
+| Application screenshots | Done: DISP-003 (escalated to a human, S$6.66 refund held as a draft; retaken on 15 October 2026 under Policy v2.1) and DISP-002 (no-show; taken before Policy v2.1) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard (review queue, and sorted by priority); the submit page | `proof/screenshots/04-…` to `13-…` |
 | Demo video, 5–8 minutes (optional) | **TO ADD** | — |
 | Live project link (optional, earns bonus points) | **TO ADD** | — |
