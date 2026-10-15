@@ -23,9 +23,10 @@ export function Layout({ children }: LayoutProps) {
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
       <aside className="relative isolate overflow-hidden w-14 md:w-52 shrink-0 border-r border-sidebar-border bg-sidebar text-sidebar-foreground flex flex-col">
-        {/* Logo */}
+        {/* Product name only; keep the theme colours without using the Ryde mark. */}
         <div className="px-2 md:px-4 pt-5 pb-4">
-          <img src="/ryde-logo.png" alt="Ryde" className="h-6 md:h-8 w-auto mx-auto md:mx-0 object-contain object-left" />
+          <span className="hidden md:block text-lg font-bold tracking-tight text-primary">RydeResolve</span>
+          <span className="md:hidden block text-center text-lg font-bold text-primary" aria-label="RydeResolve">R</span>
         </div>
 
         {/* Navigation: icon tiles make a short list read as a deliberate menu */}

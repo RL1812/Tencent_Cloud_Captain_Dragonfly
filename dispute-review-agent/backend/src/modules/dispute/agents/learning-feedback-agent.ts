@@ -22,7 +22,10 @@ function feedbackText(dispute: DisputeCase): string {
   ].join('\n');
 }
 
-/** Stores a reviewed outcome as case-scoped knowledge. This is RAG feedback, not model fine-tuning. */
+/**
+ * Optionally indexes a reviewed outcome for semantic search and audit. The Judge's
+ * active learning loop uses the separate JSON precedent store; neither path fine-tunes a model.
+ */
 export async function runLearningFeedbackAgent(dispute: DisputeCase): Promise<LearningFeedback> {
   const recordedAt = new Date().toISOString();
   if (!dispute.humanOverride) {

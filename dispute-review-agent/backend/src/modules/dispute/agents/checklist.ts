@@ -3,8 +3,8 @@ import type { AgentInput } from './contracts';
 
 /**
  * Points the Judge must address, by ID, before ruling. Each answer says what the
- * record shows and whether sources conflict, so known weak spots (such as the
- * DISP-002 wait-start ambiguity) are covered on every review, not by chance.
+ * record shows and whether sources conflict, so known weak spots such as arrival,
+ * location, contact attempts and timestamp inconsistencies are covered every time.
  */
 export interface ChecklistItem {
   id: string;

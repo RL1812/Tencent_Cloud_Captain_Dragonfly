@@ -47,7 +47,7 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 2. **Builds both sides of the case in parallel** — the Rider Advocate and Driver Advocate independently gather evidence from the same record and argue their party's position, each citing specific JSON-pointer paths.
 3. **Flags bad-faith risk without prejudging** — a Fraud & Bad-Faith Detection Agent turns account risk flags, dispute history and account age into risk signals that the Judge weighs as context, never as evidence.
 4. **Adjudicates with a mandatory checklist** — the Judge must answer every required checklist item for the dispute type before ruling; a ruling that skips an item is rejected.
-5. **Escalates by the stakes** — under Policy v2.1, safety incidents, disputes over SGD 50 and route deviations over 2 km always go to a human reviewer, with the full agent transcript and checklist. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag; an inconclusive ruling also goes to a human.
+5. **Escalates by the stakes** — under Policy v2.1, safety incidents, disputed property-damage claims, disputes over SGD 50 and route deviations over 2 km always go to a human reviewer, with the full agent transcript and checklist. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag; an inconclusive ruling also goes to a human.
 6. **Learns from human decisions** — when a reviewer overrides the AI and marks "use as precedent", the decision is saved and shown to the Judge as few-shot calibration examples for future cases of the same type — without model fine-tuning.
 
 ---
@@ -81,9 +81,9 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 - **Driver Advocate** — mirrors the Rider Advocate for the driver's perspective.
 - **Fraud & Bad-Faith Detection Agent** — runs alongside the advocates without a model call. From account risk flags, dispute rate, the share of past disputes decided against each party and account age, it produces risk signals for the Judge. They are context, never evidence: they cannot be cited and must not decide a ruling on their own.
 - **Judge** — weighs both submissions against the original record (advocate arguments are not additional evidence), answers a mandatory checklist, consults up to 3 human precedents of the same dispute type, weighs the fraud risk signals as context, and issues a structured resolution (action, amount, currency, recipient, basis) capped at the disputed charge. Also writes plain-language party notices.
-- **Escalation Agent** — applies Policy v2.1: safety incidents, disputes over SGD 50 and route deviations over 2 km always go to a human reviewer. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag. An inconclusive ruling also goes to a human. Everything else auto-resolves.
+- **Escalation Agent** — applies Policy v2.1: safety incidents, disputed property-damage claims, disputes over SGD 50 and route deviations over 2 km always go to a human reviewer. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag. An inconclusive ruling also goes to a human. Everything else auto-resolves.
 - **Human Decision** — a reviewer can decide any case at any time, regardless of whether the AI has reviewed it. The decision overrides the AI, and can be revised or withdrawn.
-- **Learning Feedback Agent** — when a human decision is marked "use as precedent", it is saved to the precedent store, and the Judge sees it as a few-shot calibration example for future cases of the same type. The decision is also indexed in the knowledge base for search. No model fine-tuning is involved.
+- **Learning Feedback Agent** — every human override stays on the case and can be indexed in the optional knowledge base for search. When the reviewer also marks it "use as precedent", it is saved to the JSON precedent store and shown to the Judge as a few-shot calibration example. No model fine-tuning is involved.
 
 ### 4.2 Technical Architecture
 
@@ -145,7 +145,7 @@ Advocate Advocate Detection
          │
     ┌────┴──────────────────────┐
     │                           │
- confidence meets the       safety, over SGD 50,
+ confidence meets the       safety, property damage,
  threshold for the stakes   route deviation over 2 km,
  (80%; none under SGD 10;   below the threshold,
  95% with a fraud flag)     or inconclusive
@@ -217,9 +217,9 @@ All claims below are supported by the repository or handbook. No results are inv
 | Manual dispute resolution takes **24–72 hours** per dispute | Handbook V2.0, page 4 |
 | Manual resolution causes **inconsistent rulings** — different agents reach different conclusions on similar cases | Handbook V2.0, page 4 |
 | Manual resolution incurs **high operational costs** — millions spent annually on human support hours | Handbook V2.0, page 4 |
-| **Policy v2.1 escalation rules** govern auto-resolution vs. human review: safety, over SGD 50 and route deviations over 2 km always go to a human; otherwise 80% confidence (none under SGD 10), or 95% with a fraud flag | `escalation-agent.ts`, `policy.ts` |
+| **Policy v2.1 escalation rules** govern auto-resolution vs. human review: safety, disputed property damage, values over SGD 50 and route deviations over 2 km always go to a human; otherwise 80% confidence (none under SGD 10), or 95% with a fraud flag | `escalation-agent.ts`, `policy.ts` |
 | A single AI review makes **3 LLM calls** (Rider Advocate + Driver Advocate + Judge); prioritization, evidence validation, fraud detection and escalation make none | `agents/README.md` and `orchestrator.ts` |
-| The Gemini free tier allows ~20 requests per model per day, so a review takes 15 s – 3 min | `README.md`, Notes section |
+| Each successful AI review makes three model calls; latency and quota depend on the configured Gemini or Tencent TokenHub account | `llm-chat.ts`; `orchestrator.ts` |
 | The Prioritization Agent assigns target response times from **15 min (urgent) to 24 h (low)** without an LLM call | `prioritization-agent.ts`: `responseMinutes` |
 | The Judge consults up to **3 recent same-type precedents** to calibrate its standards | `precedents.ts`: `select()` with `limit = env.PRECEDENT_EXAMPLES` |
 | Resolution amounts are **capped at the disputed charge** (refunds) or 2× (compensation) | `judge.ts`: `disputedAmount()` and `COMPENSATION_CAP_MULTIPLIER` |
@@ -365,7 +365,7 @@ Every point below is implemented in the repository; the source is given in brack
 | Principle | How the system implements it |
 |---|---|
 | **A human can always decide** | A reviewer can decide any case at any time, whether or not the AI has reviewed it. The decision can be revised or withdrawn, takes priority over the AI, and is not overturned by a re-review. [`docs/product/features.md`; `POST/DELETE /api/disputes/:id/override`] |
-| **High stakes and low confidence go to a person** | Under Policy v2.1, safety incidents, disputes over SGD 50 and route deviations over 2 km always go to a human. Otherwise the Judge needs 80% confidence (none under SGD 10), or 95% when a party has a fraud flag; an inconclusive ruling also goes to a human. [`escalation-agent.ts`] |
+| **High stakes and low confidence go to a person** | Under Policy v2.1, safety incidents, disputed property-damage claims, disputes over SGD 50 and route deviations over 2 km always go to a human. Otherwise the Judge needs 80% confidence (none under SGD 10), or 95% when a party has a fraud flag; an inconclusive ruling also goes to a human. [`escalation-agent.ts`] |
 | **Nothing is sent before a human decides** | For escalated cases the plain-language notices to the rider and the driver are shown as drafts ("Draft — held until a human reviewer decides"). After a human decision, the AI's draft is marked "Superseded by the human decision — rewrite before sending". Only notices for cases where the AI ruling stands are marked "Ready to send". [`PartyNoticesCard` in `AgentReview.tsx`] |
 | **No automatic money movement** | A resolution is a recommendation stored on the case. The codebase contains no payment integration. [searched `backend/src`] |
 | **Bounded outcomes** | A refund cannot exceed the disputed charge; compensation is capped at 2× the charge; an inconclusive ruling cannot move money. [`judge.ts`] |
@@ -388,13 +388,13 @@ This is a hackathon prototype. The limits below are stated plainly so that the d
 - **Structured datasets exist for three dispute types.** Route deviation (DISP-003, plus the DISP-001 document), no-show charge (DISP-002, plus ten test fixtures) and fare dispute (the Document 1 sample) have datasets and tests. Property damage and safety accident are in the data model and have Judge checklists, but no sample dataset yet.
 - **Uploaded photos and PDFs are stored and shown, but the agents do not read their contents.** Image analysis is a handbook stretch goal and is not implemented. Uploaded files appear as evidence in the case view only.
 - **The knowledge base is optional.** PostgreSQL with pgvector and Ollama are needed for document parsing, OCR and retrieval. When the knowledge base is offline, the dispute review still works and a human decision stays saved in the case record.
-- **Model quota limits throughput.** The Gemini free tier allows about 20 requests per model per day and one review makes three model calls, so a review takes 15 seconds to about 3 minutes and repeated reviews can hit the limit. The provider can be switched to Tencent TokenHub with `LLM_PROVIDER`.
+- **Provider limits affect throughput.** Each successful review makes three model calls. Latency and quota depend on the configured provider and account, so production capacity must be measured under the intended Gemini or Tencent TokenHub deployment.
 - **Single market.** The sample datasets are Singapore trips in SGD.
 - **Confidence is an assessment, not a calibrated probability.** The escalation thresholds come from Policy v2.1 and should be tuned on real labelled cases.
 
-**Testing.** The backend has 95 automated tests (agents, fraud detection, Policy v2.1, route-deviation analysis, no-show fixtures, knowledge base and system routes), and all pass at the time of writing (15 October 2026).
+**Testing.** The backend has 95 automated tests across 7 suites (agents, fraud detection, Policy v2.1, route-deviation analysis, no-show fixtures, knowledge base and system routes). The backend tests, TypeScript checks, ESLint and frontend production build all pass as of 15 October 2026. Model responses are mocked in the default suite; a labelled live-provider evaluation remains future work.
 
-**Next steps:** authentication and a persistent case store; sample datasets for property damage and safety incidents; image analysis for damage photos; connecting uploaded documents to the knowledge base; and threshold tuning on real cases.
+**Next steps:** authentication, role-based access and a persistent case/audit store; sample datasets for property damage and safety incidents; evidence-content extraction for uploaded photos and PDFs; connecting retrieval results to the review agents with traceable citations; and a labelled evaluation harness for policy outcome, escalation recall, citation accuracy, repeated-run consistency, latency and cost.
 
 ---
 
@@ -405,7 +405,7 @@ This is a hackathon prototype. The limits below are stated plainly so that the d
 | Impact and relevance | Section 3: the Ryde challenge (24–72 h resolution, inconsistent rulings, cost, churn). |
 | Human-centered design | Plain-language notices to both parties; a reviewer interface with a full audit trail; the human-decision flow (Section 8). |
 | AI interaction | Three-stage multi-agent reasoning with a mandatory checklist and structured output (Section 4). |
-| Technical execution | LangGraph workflow, validated citations, bounded resolutions, policy encoded and tested against the source document, 95 passing tests (Sections 4 and 9). |
+| Technical execution | LangGraph workflow, validated citations, bounded resolutions, policy encoded and tested against the source document, and 95 passing tests across 7 suites (Sections 4 and 9). |
 | Feasibility | Runs on a free model tier or Tencent TokenHub; the limits and next steps are stated (Section 9). |
 | Demo and storytelling | Two contrasting cases: a confident ruling that still goes to a human because the stakes are high (DISP-003), and a low-value no-show that resolves automatically only because the Judge clears the stricter bar set by a fraud flag (DISP-002) (Section 6). |
 | Innovation and creativity | Precedent calibration from human decisions; deterministic route analysis so agents cite measured numbers; fraud signals that inform but never decide; no tie-breaker fallback. |

@@ -85,7 +85,7 @@ No fallback chooses a winner based on ratings or statement length. The
 deterministic Prioritization Agent assigns an explainable queue level and target
 response time without consuming an LLM call. For stored cases, a failed review
 (mode=fallback) leaves the case pending for a retry. The Escalation Agent applies
-Policy v2.1: safety and values above SGD 50 always go to a human; SGD 10–50 requires
+Policy v2.1: safety, disputed property-damage claims and values above SGD 50 always go to a human; SGD 10–50 requires
 80% confidence; route deviations above 2 km go to a human; and any fraud flag raises
 the confidence requirement to 95%. An inconclusive ruling also goes to a human. A human
 decision (POST /api/disputes/:id/override) closes the case. If the reviewer keeps it as

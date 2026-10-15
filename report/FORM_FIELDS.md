@@ -47,7 +47,7 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 2. **Builds both sides of the case in parallel** — the Rider Advocate and Driver Advocate independently gather evidence from the same record and argue their party's position, each citing specific JSON-pointer paths.
 3. **Flags bad-faith risk without prejudging** — a Fraud & Bad-Faith Detection Agent turns account risk flags, dispute history and account age into risk signals that the Judge weighs as context, never as evidence.
 4. **Adjudicates with a mandatory checklist** — the Judge must answer every required checklist item for the dispute type before ruling; a ruling that skips an item is rejected.
-5. **Escalates by the stakes** — under Policy v2.1, safety incidents, disputes over SGD 50 and route deviations over 2 km always go to a human reviewer, with the full agent transcript and checklist. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag; an inconclusive ruling also goes to a human.
+5. **Escalates by the stakes** — under Policy v2.1, safety incidents, disputed property-damage claims, disputes over SGD 50 and route deviations over 2 km always go to a human reviewer, with the full agent transcript and checklist. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag; an inconclusive ruling also goes to a human.
 6. **Learns from human decisions** — when a reviewer overrides the AI and marks "use as precedent", the decision is saved and shown to the Judge as few-shot calibration examples for future cases of the same type — without model fine-tuning.
 
 
@@ -65,9 +65,9 @@ Before ruling, a human reviewer must manually cross-reference GPS telemetry, cha
 - **Driver Advocate** — mirrors the Rider Advocate for the driver's perspective.
 - **Fraud & Bad-Faith Detection Agent** — runs alongside the advocates without a model call. From account risk flags, dispute rate, the share of past disputes decided against each party and account age, it produces risk signals for the Judge. They are context, never evidence: they cannot be cited and must not decide a ruling on their own.
 - **Judge** — weighs both submissions against the original record (advocate arguments are not additional evidence), answers a mandatory checklist, consults up to 3 human precedents of the same dispute type, weighs the fraud risk signals as context, and issues a structured resolution (action, amount, currency, recipient, basis) capped at the disputed charge. Also writes plain-language party notices.
-- **Escalation Agent** — applies Policy v2.1: safety incidents, disputes over SGD 50 and route deviations over 2 km always go to a human reviewer. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag. An inconclusive ruling also goes to a human. Everything else auto-resolves.
+- **Escalation Agent** — applies Policy v2.1: safety incidents, disputed property-damage claims, disputes over SGD 50 and route deviations over 2 km always go to a human reviewer. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag. An inconclusive ruling also goes to a human. Everything else auto-resolves.
 - **Human Decision** — a reviewer can decide any case at any time, regardless of whether the AI has reviewed it. The decision overrides the AI, and can be revised or withdrawn.
-- **Learning Feedback Agent** — when a human decision is marked "use as precedent", it is saved to the precedent store, and the Judge sees it as a few-shot calibration example for future cases of the same type. The decision is also indexed in the knowledge base for search. No model fine-tuning is involved.
+- **Learning Feedback Agent** — every human override stays on the case and can be indexed in the optional knowledge base for search. When the reviewer also marks it "use as precedent", it is saved to the JSON precedent store and shown to the Judge as a few-shot calibration example. No model fine-tuning is involved.
 
 ### 4.2 Technical Architecture
 
@@ -146,9 +146,9 @@ All claims below are supported by the repository or handbook. No results are inv
 | Manual dispute resolution takes **24–72 hours** per dispute | Handbook V2.0, page 4 |
 | Manual resolution causes **inconsistent rulings** — different agents reach different conclusions on similar cases | Handbook V2.0, page 4 |
 | Manual resolution incurs **high operational costs** — millions spent annually on human support hours | Handbook V2.0, page 4 |
-| **Policy v2.1 escalation rules** govern auto-resolution vs. human review: safety, over SGD 50 and route deviations over 2 km always go to a human; otherwise 80% confidence (none under SGD 10), or 95% with a fraud flag | `escalation-agent.ts`, `policy.ts` |
+| **Policy v2.1 escalation rules** govern auto-resolution vs. human review: safety, disputed property damage, values over SGD 50 and route deviations over 2 km always go to a human; otherwise 80% confidence (none under SGD 10), or 95% with a fraud flag | `escalation-agent.ts`, `policy.ts` |
 | A single AI review makes **3 LLM calls** (Rider Advocate + Driver Advocate + Judge); prioritization, evidence validation, fraud detection and escalation make none | `agents/README.md` and `orchestrator.ts` |
-| The Gemini free tier allows ~20 requests per model per day, so a review takes 15 s – 3 min | `README.md`, Notes section |
+| Each successful AI review makes three model calls; latency and quota depend on the configured Gemini or Tencent TokenHub account | `llm-chat.ts`; `orchestrator.ts` |
 | The Prioritization Agent assigns target response times from **15 min (urgent) to 24 h (low)** without an LLM call | `prioritization-agent.ts`: `responseMinutes` |
 | The Judge consults up to **3 recent same-type precedents** to calibrate its standards | `precedents.ts`: `select()` with `limit = env.PRECEDENT_EXAMPLES` |
 | Resolution amounts are **capped at the disputed charge** (refunds) or 2× (compensation) | `judge.ts`: `disputedAmount()` and `COMPENSATION_CAP_MULTIPLIER` |

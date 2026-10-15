@@ -33,10 +33,13 @@ that file into the evidence knowledge base or include it in model prompts.
 ## Interpreting the expected results
 
 The rubric is authored for these synthetic fixtures; it is not an observed model
-result or an official Ryde policy. Evaluate the material reasoning and money
-amounts, not exact wording or an invented confidence score.
+result or the controlling Ryde Policy v2.1. It preserves the historical
+`cancellation_policy` embedded in the original sample so these records remain useful
+as regression fixtures. The production review workflow instead supplies
+`/applicable_policy` and a deterministic `/computed_policy_assessment`; those v2.1
+values override the historical dataset policy.
 
-Common benchmark interpretation: a rider_no_show fee requires the full eight-minute
+Historical fixture interpretation: a rider_no_show fee requires the full eight-minute
 no-show threshold at the booked pickup. The five-minute free-wait threshold alone
 is insufficient. Where a required rule is not explicit in the source's four-field
 policy, assumptions are documented separately in the answer key.

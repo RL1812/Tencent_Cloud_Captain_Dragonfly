@@ -130,7 +130,7 @@ flowchart TD
     JV -- yes --> ESC
 
     subgraph escalation["Confidence-based escalation"]
-        ESC["Escalation agent (Policy v2.1)<br/>always human: safety, over SGD 50,<br/>route deviation over 2 km<br/>confidence needed: 80% (none under SGD 10),<br/>95% with a fraud flag"]
+        ESC["Escalation agent (Policy v2.1)<br/>always human: safety, property damage,<br/>over SGD 50, route deviation over 2 km<br/>confidence needed: 80% (none under SGD 10),<br/>95% with a fraud flag"]
         ESC --> ECHK{"needs human?"}
     end
 
@@ -169,8 +169,8 @@ is never shown its own earlier decision. The **Precedents** page lists them, and
 using it.
 
 **The Judge must answer a checklist** before ruling: the known weak spots for each dispute type (for
-no-shows: arrival vs scheduled time, wait start under each basis, elapsed wait vs threshold, contact
-attempts, rider location) plus statement-vs-record and timestamp conflicts. A ruling that skips an
+no-shows: arrival against scheduled time, the five-minute wait, both required contact attempts,
+booked pickup location and fixed fee) plus statement-vs-record and timestamp conflicts. A ruling that skips an
 item is rejected; each answer is shown with its citations and a conflict flag. Imported datasets are reviewed on
 the original JSON, so evidence added to such a case after import is not used. Agent inputs, outputs
 and failure rules: [`backend/src/modules/dispute/agents/README.md`](backend/src/modules/dispute/agents/README.md).
@@ -191,8 +191,8 @@ stateDiagram-v2
     resolved --> pending: human decision withdrawn (no AI review)
 ```
 
-**Escalation rules (Policy v2.1, `agents/escalation-agent.ts`).** Safety incidents, disputes over
-SGD 50 and route deviations over 2 km always go to a human. Otherwise the Judge must reach 80%
+**Escalation rules (Policy v2.1, `agents/escalation-agent.ts`).** Safety incidents, disputed
+property-damage claims, disputes over SGD 50 and route deviations over 2 km always go to a human. Otherwise the Judge must reach 80%
 confidence (no minimum for disputes under SGD 10), or 95% when either party has a fraud flag. An
 inconclusive ruling also goes to a human. So the DISP-003 sample (a 7.8 km deviation) is always
 escalated, however confident the Judge is.

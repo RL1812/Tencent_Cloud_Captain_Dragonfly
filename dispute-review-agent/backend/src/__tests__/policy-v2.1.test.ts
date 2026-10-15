@@ -10,6 +10,7 @@ import { runEscalationAgent } from '../modules/dispute/agents/escalation-agent';
 import { assessStructuredPolicy, RYDE_POLICY_V2_1 } from '../modules/dispute/agents/policy';
 import { formatCaseContext } from '../modules/dispute/agents/shared';
 import { datasetToCreateDTO } from '../modules/dispute/import-dataset';
+import { disputeStore } from '../modules/dispute/store';
 
 const root = path.resolve(__dirname, '../../../../reference');
 
@@ -86,6 +87,13 @@ test('Policy v2.1 escalation thresholds are applied to the supplied samples', ()
   expect(runEscalationAgent({ ...completedReview, confidenceScore: 94 }, noShow)).toMatchObject({
     needsHuman: true, confidenceThreshold: 95,
   });
+  const propertyDamage = runEscalationAgent(completedReview, {
+    ...disputeStore.getById('case-003')!, type: 'property_damage',
+  });
+  expect(propertyDamage).toMatchObject({ needsHuman: true, confidenceThreshold: 100 });
+  expect(propertyDamage.triggers).toEqual(expect.arrayContaining([
+    expect.stringContaining('property-damage'),
+  ]));
 });
 
 test('the new route and fare samples can be imported into dashboard cases', () => {

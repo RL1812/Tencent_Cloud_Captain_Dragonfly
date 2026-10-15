@@ -7,13 +7,13 @@ import {
 } from './dataset';
 import { RYDE_POLICY_V2_1 } from './policy';
 
-/** Below this Judge confidence, the case must be decided by a human reviewer. */
-export const ESCALATION_THRESHOLD = 60;
+/** Fallback threshold for legacy inputs when no Policy v2.1 case data is available. */
+export const DEFAULT_ESCALATION_THRESHOLD = 60;
 
 export function runEscalationAgent<T extends Pick<JudgeReview, 'mode' | 'recommendation' | 'confidenceScore'>>(
   review: T,
   input?: AgentInput,
-  defaultThreshold = ESCALATION_THRESHOLD
+  defaultThreshold = DEFAULT_ESCALATION_THRESHOLD
 ): EscalationDecision {
   const triggers: string[] = [];
   let threshold = defaultThreshold;
@@ -30,6 +30,9 @@ export function runEscalationAgent<T extends Pick<JudgeReview, 'mode' | 'recomme
 
       if (type === 'safety_accident') {
         triggers.push('Safety incidents always require human review under Policy v2.1 §5.');
+      } else if (type === 'property_damage') {
+        threshold = 100;
+        triggers.push('Disputed property-damage claims always require human review under Policy v2.1 §4.');
       } else if (isLegacyRouteDeviationDataset(input)) {
         const deviationKm = input.trip_data.actual_distance_km - input.recommended_route.distance_km;
         threshold = 80;
