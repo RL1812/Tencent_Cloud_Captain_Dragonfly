@@ -37,6 +37,38 @@ export const escalationDecisionSchema = z.object({
 });
 export type EscalationDecision = z.infer<typeof escalationDecisionSchema>;
 
+/**
+ * Risk signals from the Fraud and Bad-Faith Detection agent. These describe
+ * dispute-abuse patterns in a party's profile and dispute history. They are
+ * context for the Judge — never evidence, never citable, and never sufficient
+ * on their own to change a ruling.
+ */
+export const fraudSignalSchema = z.object({
+  party: z.enum(['rider', 'driver']),
+  code: z.enum([
+    'account_risk_flag',
+    'dispute_frequency',
+    'adverse_outcome_ratio',
+    'thin_account_history',
+    'counterparty_asymmetry',
+  ]),
+  severity: z.enum(['medium', 'high']),
+  detail: z.string().min(1),
+  sourceRefs: z.array(z.string().min(1)).min(1),
+});
+export type FraudSignal = z.infer<typeof fraudSignalSchema>;
+
+export const fraudAssessmentSchema = z.object({
+  agent: z.literal('fraud_detection_agent'),
+  riskLevel: z.enum(['low', 'medium', 'high']),
+  signals: z.array(fraudSignalSchema),
+  note: z.string().min(1),
+  /** Asserted by code: the assessment is risk context, not evidence about this trip. */
+  contextOnly: z.literal(true),
+  assessedAt: z.string().datetime(),
+});
+export type FraudAssessment = z.infer<typeof fraudAssessmentSchema>;
+
 // Models sometimes answer 72.5 or a probability like 0.85; store a whole 0-100 score
 const confidenceScoreSchema = z
   .number()
@@ -112,6 +144,7 @@ export type MultiAgentReview = JudgeReview & {
   advocateSubmissions: { rider: AdvocateCase; driver: AdvocateCase };
   priorityAssessment: PriorityAssessment;
   evidenceValidation: EvidenceValidation;
+  fraudAssessment: FraudAssessment;
   escalation: EscalationDecision;
   workflowStatus: ReviewWorkflowStatus;
 };

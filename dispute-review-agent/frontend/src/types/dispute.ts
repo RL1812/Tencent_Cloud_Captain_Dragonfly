@@ -111,6 +111,7 @@ export interface AIReview {
   partyNotices?: PartyNotices;
   priorityAssessment?: PriorityAssessment;
   evidenceValidation?: EvidenceValidation;
+  fraudAssessment?: FraudAssessment;
   escalation?: Escalation;
   workflowStatus?: 'auto_resolved' | 'human_intervention_required';
 }
@@ -139,6 +140,29 @@ export interface EvidenceValidation {
   checks: string[];
   warnings: string[];
   validatedAt: string;
+}
+
+/** One abuse-pattern signal. Risk context for the Judge — never evidence. */
+export interface FraudSignal {
+  party: 'rider' | 'driver';
+  code:
+    | 'account_risk_flag'
+    | 'dispute_frequency'
+    | 'adverse_outcome_ratio'
+    | 'thin_account_history'
+    | 'counterparty_asymmetry';
+  severity: 'medium' | 'high';
+  detail: string;
+  sourceRefs: string[];
+}
+
+export interface FraudAssessment {
+  agent: 'fraud_detection_agent';
+  riskLevel: 'low' | 'medium' | 'high';
+  signals: FraudSignal[];
+  note: string;
+  contextOnly: true;
+  assessedAt: string;
 }
 
 /** Set when the Judge is not confident enough and a human should decide. */

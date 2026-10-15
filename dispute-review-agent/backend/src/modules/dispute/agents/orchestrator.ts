@@ -4,6 +4,7 @@ import type {
   AgentInput,
   EscalationDecision,
   EvidenceValidation,
+  FraudAssessment,
   JudgeReview,
   MultiAgentReview,
   PriorityAssessment,
@@ -12,6 +13,7 @@ import type {
 import { runDriverAdvocate } from './driver-advocate';
 import { runEscalationAgent } from './escalation-agent';
 import { runEvidenceValidationAgent } from './evidence-validation-agent';
+import { runFraudAgent } from './fraud-agent';
 import { runJudge } from './judge';
 import { runPrioritizationAgent } from './prioritization-agent';
 import { runRiderAdvocate } from './rider-advocate';
@@ -23,6 +25,7 @@ const ReviewState = Annotation.Root({
   input: Annotation<AgentInput>(),
   priorityAssessment: Annotation<PriorityAssessment>(),
   evidenceValidation: Annotation<EvidenceValidation>(),
+  fraud: Annotation<FraudAssessment>(),
   rider: Annotation<AdvocateCase>(),
   driver: Annotation<AdvocateCase>(),
   ruling: Annotation<JudgeReview>(),
@@ -31,8 +34,9 @@ const ReviewState = Annotation.Root({
 });
 
 /**
- * LangGraph workflow: priority -> evidence validation -> parallel advocates ->
- * Judge -> confidence routing -> automatic resolution or human intervention.
+ * LangGraph workflow: priority -> evidence validation -> parallel advocates and
+ * fraud/bad-faith detection -> Judge -> confidence routing -> automatic
+ * resolution or human intervention.
  */
 export const disputeReviewGraph = new StateGraph(ReviewState)
   .addNode('prioritization', (state) => ({
@@ -40,6 +44,9 @@ export const disputeReviewGraph = new StateGraph(ReviewState)
   }))
   .addNode('evidence_validation', (state) => ({
     evidenceValidation: runEvidenceValidationAgent(state.input),
+  }))
+  .addNode('fraud_detection', (state) => ({
+    fraud: runFraudAgent(state.input),
   }))
   .addNode('rider_advocate', async (state) => ({
     rider: await runRiderAdvocate(state.input),
@@ -52,7 +59,8 @@ export const disputeReviewGraph = new StateGraph(ReviewState)
       state.input,
       state.rider,
       state.driver,
-      precedentStore.select(disputeType(state.input), disputeId(state.input))
+      precedentStore.select(disputeType(state.input), disputeId(state.input)),
+      state.fraud
     ),
   }))
   .addNode('confidence_escalation', (state) => ({
@@ -68,7 +76,8 @@ export const disputeReviewGraph = new StateGraph(ReviewState)
   .addEdge('prioritization', 'evidence_validation')
   .addEdge('evidence_validation', 'rider_advocate')
   .addEdge('evidence_validation', 'driver_advocate')
-  .addEdge(['rider_advocate', 'driver_advocate'], 'judge')
+  .addEdge('evidence_validation', 'fraud_detection')
+  .addEdge(['rider_advocate', 'driver_advocate', 'fraud_detection'], 'judge')
   .addEdge('judge', 'confidence_escalation')
   .addConditionalEdges(
     'confidence_escalation',
@@ -82,7 +91,7 @@ export const disputeReviewGraph = new StateGraph(ReviewState)
 export async function reviewDispute(input: AgentInput): Promise<MultiAgentReview> {
   const state = await disputeReviewGraph.invoke({ input: validateInput(input) });
   if (!state.ruling || !state.rider || !state.driver || !state.priorityAssessment ||
-      !state.evidenceValidation || !state.escalation || !state.workflowStatus) {
+      !state.evidenceValidation || !state.fraud || !state.escalation || !state.workflowStatus) {
     throw new Error('LangGraph review finished without a complete workflow state.');
   }
   return {
@@ -90,6 +99,7 @@ export async function reviewDispute(input: AgentInput): Promise<MultiAgentReview
     advocateSubmissions: { rider: state.rider, driver: state.driver },
     priorityAssessment: state.priorityAssessment,
     evidenceValidation: state.evidenceValidation,
+    fraudAssessment: state.fraud,
     escalation: state.escalation,
     workflowStatus: state.workflowStatus,
   };

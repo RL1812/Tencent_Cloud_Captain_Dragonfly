@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Pencil,
   Receipt,
+  ShieldAlert,
   Undo2,
   User,
   UserCheck,
@@ -195,7 +196,8 @@ export function AgentTranscript({ review }: { review: AIReview }) {
     <div className="mb-6">
       <h2 className="text-xl font-bold mb-1">Multi-agent review</h2>
       <p className="text-sm text-muted-foreground mb-4">
-        Prioritization → parallel rider and driver advocacy → Judge decision → confidence-based escalation
+        Prioritization → evidence validation → parallel rider and driver advocacy
+        and fraud / bad-faith detection → Judge decision → confidence-based escalation
       </p>
       {review.priorityAssessment && (
         <Card className="mb-4 border-primary/30 bg-primary/5">
@@ -234,6 +236,34 @@ export function AgentTranscript({ review }: { review: AIReview }) {
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-amber-700">
                     {review.evidenceValidation.warnings.map((warning) => (
                       <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {review.fraudAssessment && (
+        <Card className={`mb-4 ${review.fraudAssessment.riskLevel === 'high' ? 'border-red-400 bg-red-50' : review.fraudAssessment.riskLevel === 'medium' ? 'border-amber-300 bg-amber-50' : ''}`}>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <ShieldAlert className={`mt-0.5 h-4 w-4 ${review.fraudAssessment.riskLevel === 'high' ? 'text-red-600' : review.fraudAssessment.riskLevel === 'medium' ? 'text-amber-600' : 'text-primary'}`} />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold">Fraud &amp; Bad-Faith Detection Agent</p>
+                  <Badge variant="outline" className={review.fraudAssessment.riskLevel === 'high' ? 'border-red-400 text-red-700' : review.fraudAssessment.riskLevel === 'medium' ? 'border-amber-400 text-amber-700' : ''}>
+                    {review.fraudAssessment.riskLevel.toUpperCase()} RISK
+                  </Badge>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{review.fraudAssessment.note}</p>
+                {review.fraudAssessment.signals.length > 0 && (
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                    {review.fraudAssessment.signals.map((s) => (
+                      <li key={s.code + s.party}>
+                        <span className="font-medium text-foreground">{s.party === 'rider' ? 'Rider' : 'Driver'} — {s.code.replace(/_/g, ' ')}:</span>{' '}
+                        {s.detail}
+                      </li>
                     ))}
                   </ul>
                 )}

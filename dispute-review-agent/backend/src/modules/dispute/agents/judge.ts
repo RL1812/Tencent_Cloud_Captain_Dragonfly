@@ -1,6 +1,7 @@
 import { chatCompletion } from '../../../lib/llm-chat';
 import {
-  judgeOutputSchema, type AgentInput, type AdvocateCase, type JudgeOutput, type JudgeReview,
+  judgeOutputSchema, type AgentInput, type AdvocateCase, type FraudAssessment,
+  type JudgeOutput, type JudgeReview,
 } from './contracts';
 import {
   assertSourceRefs, checkAdvocateSources, disputeId, evidenceInstructions,
@@ -107,7 +108,7 @@ function withConflictsListed(missing: string[], answers: ChecklistAnswer[]): str
 
 export async function runJudge(
   input: AgentInput, riderCase: AdvocateCase, driverCase: AdvocateCase,
-  precedents: Precedent[] = []
+  precedents: Precedent[] = [], fraud?: FraudAssessment
 ): Promise<JudgeReview> {
   const record = validateInput(input);
   // Do not silently judge from one successful advocate and one template fallback.
@@ -152,6 +153,11 @@ humanPrecedents (may be empty) are earlier disputes of this type decided by huma
 their reasons. Use them only to calibrate standards: how the policy is applied and how records are
 weighed against statements. They are not evidence about this case, are never cited in sourceRefs and
 never override this record. Where this case differs materially, rule on its own facts.
+fraudRiskSignals (may be absent) are risk context the system computed from each party's profile and
+dispute history. They are context, never evidence: they prove nothing about this trip, they are never
+cited in sourceRefs, and they must not change the ruling on their own. A flagged or high-frequency
+account can still be the wronged party. Use them only to explain, in confidenceReasoning, that you
+weighed them and why they did not decide the outcome. Never raise or lower confidence to match them.
 Return only this JSON object:
 {
  "summary":"ruling summary", "keyIssues":["issue"],
@@ -175,6 +181,16 @@ Select one value for each enum field. Do not output the pipe-separated examples 
           riderAdvocateSubmission: riderCase,
           driverAdvocateSubmission: driverCase,
           requiredChecklist: required,
+          // Deliberately without sourceRefs: these are context, not citable record paths.
+          ...(fraud && fraud.signals.length > 0 ? {
+            fraudRiskSignals: {
+              riskLevel: fraud.riskLevel,
+              note: fraud.note,
+              signals: fraud.signals.map((s) => ({
+                party: s.party, code: s.code, severity: s.severity, detail: s.detail,
+              })),
+            },
+          } : {}),
           humanPrecedents: precedents.map((p) => ({
             caseNumber: p.caseNumber, title: p.title, facts: p.facts,
             aiRecommendation: p.aiRecommendation, humanDecision: p.humanRecommendation, humanReason: p.reason,
