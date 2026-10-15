@@ -3,7 +3,7 @@
  */
 
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FilePlus } from 'lucide-react';
+import { BookMarked, LayoutDashboard, FilePlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -13,6 +13,7 @@ interface LayoutProps {
 const navItems = [
   { to: '/', label: 'Case dashboard', icon: LayoutDashboard },
   { to: '/submit', label: 'Submit a case', icon: FilePlus },
+  { to: '/precedents', label: 'Precedents', icon: BookMarked },
 ];
 
 export function Layout({ children }: LayoutProps) {
@@ -27,7 +28,7 @@ export function Layout({ children }: LayoutProps) {
           <img src="/ryde-logo.png" alt="Ryde" className="h-6 md:h-8 w-auto mx-auto md:mx-0 object-contain object-left" />
         </div>
 
-        {/* Navigation: icon tiles make two items read as a deliberate menu */}
+        {/* Navigation: icon tiles make a short list read as a deliberate menu */}
         <nav className="relative z-10 px-1.5 md:px-3 py-3 space-y-1.5">
           {navItems.map((item) => {
             const isActive =

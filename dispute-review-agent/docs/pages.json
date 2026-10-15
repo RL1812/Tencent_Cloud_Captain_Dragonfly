@@ -13,5 +13,10 @@
     "pageKey": "Submit",
     "title": "Submit case",
     "url": "/submit"
+  },
+  {
+    "pageKey": "Precedents",
+    "title": "Precedents",
+    "url": "/precedents"
   }
 ]
