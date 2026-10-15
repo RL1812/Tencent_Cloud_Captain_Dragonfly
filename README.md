@@ -18,7 +18,7 @@ A reviewer submits a case (or imports a dataset) with evidence from the driver, 
 2. **Evidence Validation Agent** checks the record and computes route measurements (distance, off-route points, unexpected stops, fare arithmetic) with ordinary code, so the agents cite measured numbers instead of guessing.
 3. **Rider Advocate** and **Driver Advocate** run in parallel. Each argues one side from the same record and cites exact evidence paths.
 4. **Judge** must answer a mandatory checklist, then rules with a structured resolution (action, amount, recipient) and plain-language notices for both parties.
-5. **Confidence gate:** at 60% confidence or above the case is resolved automatically. Below that, or when the Judge is inconclusive, it goes to a human reviewer with the full agent transcript.
+5. **Escalation gate (Policy v2.1):** the case is resolved automatically only when the Judge is confident enough for the dispute's stakes. Safety incidents, disputes over SGD 50 and route deviations over 2 km always go to a human. Otherwise the Judge needs 80% confidence (no minimum under SGD 10), or 95% when either party has a fraud flag. An inconclusive ruling also goes to a human, with the full agent transcript.
 6. **Learning feedback:** when a reviewer overrides the AI and marks the decision as a precedent, the Judge sees it as a calibration example on similar cases. No model fine-tuning is involved.
 
 Everything the agents say to each other is visible in the case page, so a reviewer can see how the ruling was reached.
@@ -44,7 +44,7 @@ More screenshots are in [`proof/screenshots/`](proof/screenshots/).
 
 ## Run it locally
 
-You need Node.js 20 or newer and an LLM key (Gemini or TokenHub).
+You need Node.js 22.12+ (or 20.19+) and an LLM key (Gemini or TokenHub).
 
 ```bash
 cd dispute-review-agent/backend

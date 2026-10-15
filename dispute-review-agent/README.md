@@ -127,12 +127,12 @@ flowchart TD
     JV -- yes --> ESC
 
     subgraph escalation["Confidence-based escalation"]
-        ESC["Escalation agent"]
+        ESC["Escalation agent (Policy v2.1)<br/>always human: safety, over SGD 50,<br/>route deviation over 2 km<br/>confidence needed: 80% (none under SGD 10),<br/>95% with a fraud flag"]
         ESC --> ECHK{"needs human?"}
     end
 
-    ECHK -- "confidence ≥ 60%<br/>and not inconclusive" --> AUTO["Automatic resolution<br/>status = resolved"]
-    ECHK -- "confidence < 60%<br/>or inconclusive" --> HUMAN_REQ["Escalated to human<br/>status = under_review"]
+    ECHK -- "confidence ≥ threshold,<br/>no policy trigger" --> AUTO["Automatic resolution<br/>status = resolved"]
+    ECHK -- "below threshold, policy trigger<br/>or inconclusive" --> HUMAN_REQ["Escalated to human<br/>status = under_review"]
     FALL --> HUMAN_REQ
 
     AUTO --> END1((END))
@@ -176,8 +176,8 @@ stateDiagram-v2
     [*] --> pending: case created or imported
     pending --> under_review: review started
     under_review --> pending: review failed (mode = fallback), retry later
-    under_review --> under_review: inconclusive or Judge confidence below 60% (escalated to a human)
-    under_review --> resolved: Judge confidence 60% or more
+    under_review --> under_review: escalated to a human (see the escalation rules below)
+    under_review --> resolved: Judge confidence meets the threshold, no policy trigger
     resolved --> under_review: re-review (no human decision yet)
     pending --> resolved: human decision
     under_review --> resolved: human decision
@@ -185,11 +185,17 @@ stateDiagram-v2
     resolved --> pending: human decision withdrawn (no AI review)
 ```
 
+**Escalation rules (Policy v2.1, `agents/escalation-agent.ts`).** Safety incidents, disputes over
+SGD 50 and route deviations over 2 km always go to a human. Otherwise the Judge must reach 80%
+confidence (no minimum for disputes under SGD 10), or 95% when either party has a fraud flag. An
+inconclusive ruling also goes to a human. So the DISP-003 sample (a 7.8 km deviation) is always
+escalated, however confident the Judge is.
+
 **Human judge.** A reviewer can decide any case at any time from its **Human review** panel, whether or not the
 AI has reviewed it or escalated it. The decision needs a reason and can be revised or withdrawn
 later. It overrides the AI: running the AI review again only updates the AI report shown for
 reference, and the case stays resolved. Withdrawing the decision puts the case back to the AI
-result (re-applying the confidence rule above), or to pending if the AI never reviewed it.
+result (re-applying the escalation rules above), or to pending if the AI never reviewed it.
 
 ## Running locally
 
@@ -197,7 +203,7 @@ result (re-applying the confidence rule above), or to pending if the AI never re
 
 The app runs natively; only PostgreSQL runs in Docker.
 
-- Node.js 20+ — e.g. `brew install fnm && fnm install 22`
+- Node.js 22.12+ or 20.19+ (Vite 7 needs one of these) — e.g. `brew install fnm && fnm install 22`
 - [Ollama](https://ollama.com), the native app — e.g. `brew install --cask ollama`. On macOS it is
   much faster than the Docker image because it uses the GPU.
 - Docker (for PostgreSQL + pgvector) — or install PostgreSQL 13+ with pgvector 0.8+ natively
