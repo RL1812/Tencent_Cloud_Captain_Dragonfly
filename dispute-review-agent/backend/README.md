@@ -50,10 +50,9 @@ cd backend
 npm install
 ```
 
-2. Set up environment variables:
+2. Set up environment variables (skip if you already have a `.env`, because this replaces it), then edit `.env` with your configuration:
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
 ```
 
 ### Development
@@ -155,16 +154,20 @@ source, free, and runs locally — no API keys.
 
 ### Setup
 
+1. Services: PostgreSQL in Docker, Ollama native (see [../README.md](../README.md)). From `dispute-review-agent/`:
+
 ```bash
-# 1. Services: PostgreSQL in Docker, Ollama native (see ../README.md)
-docker compose up -d                                   # from dispute-review-agent/
+docker compose up -d
 ollama pull bge-m3
 ollama pull qwen2.5:7b
+```
 
-# 2. Backend
+2. Backend, from `dispute-review-agent/backend/` (skip the `cp` if you already have a `.env`). It creates the tables on first start:
+
+```bash
 cp .env.example .env
 npm install
-npm run dev     # creates the tables on first start
+npm run dev
 ```
 
 If the database is unreachable the server still starts; only `/api/knowledge/*` returns 503.

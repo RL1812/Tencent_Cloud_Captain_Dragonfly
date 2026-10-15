@@ -46,30 +46,41 @@ More screenshots are in [`proof/screenshots/`](proof/screenshots/).
 
 You need Node.js 22.12+ (or 20.19+) and an LLM key (Gemini or TokenHub).
 
+**Backend** (terminal 1). The `cp` creates your `.env`; skip it if you already have one, because it would replace your key.
+
 ```bash
 cd dispute-review-agent/backend
-cp .env.example .env        # then put your key in .env (GEMINI_API_KEY or TOKENHUB_API_KEY)
-npm install
-npm run dev                 # http://localhost:3000
+cp .env.example .env
 ```
+
+Open `dispute-review-agent/backend/.env` and set `GEMINI_API_KEY` (free key: https://aistudio.google.com/apikey) or `TOKENHUB_API_KEY`. Then:
+
+```bash
+npm install
+npm run dev
+```
+
+The API runs at http://localhost:3000/api.
+
+**Frontend** (terminal 2, from the repository root):
 
 ```bash
 cd dispute-review-agent/frontend
 npm install
-npm run dev                 # http://localhost:5173
+npm run dev
 ```
 
 Open http://localhost:5173, choose **Submit a case**, load a sample dataset (DISP-002 or DISP-003), then open the case and run the review. Without a key the agents fail safely and the case stays pending.
 
 **Good to know:** cases are kept in memory and reset when the backend restarts. A single review makes three LLM calls and takes from about 15 seconds to a few minutes on the free tier. Model output varies between runs, so a borderline case such as DISP-002 sometimes resolves automatically and sometimes escalates to a human.
 
-**Optional: knowledge base.** On start the backend warns `Knowledge base database unavailable`. You can ignore it: the case review and the whole UI work without it, and only the `/api/knowledge` API needs it. To enable it, install Docker and [Ollama](https://ollama.com), then:
+**Optional: knowledge base.** On start the backend warns `Knowledge base database unavailable`. You can ignore it: the case review and the whole UI work without it, and only the `/api/knowledge` API needs it. To enable it, install Docker and [Ollama](https://ollama.com), then start PostgreSQL + pgvector (port 5432) and download the embedding model (~1.2 GB) and the answer model (~4.7 GB):
 
 ```bash
 cd dispute-review-agent
-docker compose up -d        # PostgreSQL + pgvector on :5432
-ollama pull bge-m3          # embeddings, ~1.2 GB
-ollama pull qwen2.5:7b      # answers, ~4.7 GB
+docker compose up -d
+ollama pull bge-m3
+ollama pull qwen2.5:7b
 ```
 
 Full setup: [`dispute-review-agent/README.md`](dispute-review-agent/README.md#running-locally).
