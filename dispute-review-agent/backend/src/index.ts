@@ -9,9 +9,17 @@ const startServer = async () => {
     // The dispute review features work without the knowledge base, so a
     // missing database is a warning, not a reason to stop the server
     await initDatabase().catch((err) => {
+      // A refused connection to "localhost" is an AggregateError with an empty
+      // message (one attempt per address), so log the code instead
+      const reason =
+        (err as NodeJS.ErrnoException)?.code ||
+        (err instanceof Error && err.message) ||
+        String(err)
       logger.warn(
-        { err: err instanceof Error ? err.message : err },
-        'Knowledge base database unavailable; /api/knowledge routes will return 503'
+        { err: reason },
+        'Knowledge base database unavailable; /api/knowledge routes will return 503. ' +
+          'Start PostgreSQL with `docker compose up -d` in dispute-review-agent/, ' +
+          'or ignore this if you do not need the knowledge base'
       )
     })
 

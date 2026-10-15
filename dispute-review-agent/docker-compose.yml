@@ -13,6 +13,8 @@ services:
   postgres:
     # PostgreSQL 17 + pgvector 0.8 (PostgreSQL License)
     image: pgvector/pgvector:pg17
+    # Come back up whenever Docker starts, until stopped with docker compose stop/down
+    restart: unless-stopped
     environment:
       POSTGRES_USER: dispute
       POSTGRES_PASSWORD: dispute

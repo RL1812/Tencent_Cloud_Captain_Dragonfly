@@ -42,6 +42,14 @@ interface PartyHistory {
   totalTrips: number;
 }
 
+/**
+ * DISP-001-style documents keep `dispute_history` loosely typed, so read each
+ * count defensively: anything that is not a non-negative number counts as zero.
+ */
+function asCount(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
 function partyHistories(input: AgentInput): PartyHistory[] {
   if (!isDataset(input)) return [];
   const { rider_profile: rider, driver_profile: driver } = input;
@@ -52,8 +60,8 @@ function partyHistories(input: AgentInput): PartyHistory[] {
       name: rider.name,
       fraudFlags: rider.fraud_flags,
       fraudFlagDetails: rider.fraud_flag_details,
-      totalDisputes: rider.dispute_history.total_disputes,
-      adverse: rider.dispute_history.rejected,
+      totalDisputes: asCount(rider.dispute_history.total_disputes),
+      adverse: asCount(rider.dispute_history.rejected),
       accountAgeDays: rider.account_age_days,
       totalTrips: rider.total_trips,
     },
@@ -63,8 +71,8 @@ function partyHistories(input: AgentInput): PartyHistory[] {
       name: driver.name,
       fraudFlags: driver.fraud_flags,
       fraudFlagDetails: driver.fraud_flag_details,
-      totalDisputes: driver.dispute_history.total_disputes,
-      adverse: driver.dispute_history.upheld_against,
+      totalDisputes: asCount(driver.dispute_history.total_disputes),
+      adverse: asCount(driver.dispute_history.upheld_against),
       accountAgeDays: driver.account_age_days,
       totalTrips: driver.total_trips,
     },

@@ -63,6 +63,17 @@ Open http://localhost:5173, choose **Submit a case**, load a sample dataset (DIS
 
 **Good to know:** cases are kept in memory and reset when the backend restarts. A single review makes three LLM calls and takes from about 15 seconds to a few minutes on the free tier. Model output varies between runs, so a borderline case such as DISP-002 sometimes resolves automatically and sometimes escalates to a human.
 
+**Optional: knowledge base.** On start the backend warns `Knowledge base database unavailable`. You can ignore it: the case review and the whole UI work without it, and only the `/api/knowledge` API needs it. To enable it, install Docker and [Ollama](https://ollama.com), then:
+
+```bash
+cd dispute-review-agent
+docker compose up -d        # PostgreSQL + pgvector on :5432
+ollama pull bge-m3          # embeddings, ~1.2 GB
+ollama pull qwen2.5:7b      # answers, ~4.7 GB
+```
+
+Full setup: [`dispute-review-agent/README.md`](dispute-review-agent/README.md#running-locally).
+
 ## Documents
 
 - Full submission report: [`report/SUBMISSION.md`](report/SUBMISSION.md)
