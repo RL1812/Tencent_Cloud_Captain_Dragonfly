@@ -11,10 +11,10 @@ Multi-agent AI that resolves ride-hailing disputes fairly and fast.
 _(Word count: 9.)_
 
 ## Project link (optional, earns bonus points)
-https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/
+[Open the live RydeResolve application](https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/)
 
 ## Demo video (optional)
-https://www.youtube.com/watch?v=rD7mKcZb83A
+[Watch the RydeResolve demo video on YouTube](https://www.youtube.com/watch?v=rD7mKcZb83A)
 
 ## Project description
 The handbook asks for: project overview, real-world scenario, solution design (business and technical architecture, how prompts drive the AI) and business value. These are the four parts below.
