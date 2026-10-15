@@ -4,7 +4,7 @@ AI-assisted review of ride-hailing disputes between drivers and riders. Reviewer
 upload evidence (PDFs, screenshots, photos, notes), pull company records, and ask questions that
 are answered from that evidence with cited sources.
 
-**Live application:** [Open RydeResolve](https://124115d6579c4391bdde8c64401cb156.sg2.agentos-app.run/)
+**Live application:** [Open RydeResolve](https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/)
 
 - **Frontend:** React 19 + Vite + TanStack Query + shadcn/ui + Tailwind CSS 4 (`frontend/`, port 5173)
 - **Backend:** Express + TypeScript + Zod (`backend/`, port 3000, API under `/api`)

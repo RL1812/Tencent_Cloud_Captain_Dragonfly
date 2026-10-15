@@ -2,7 +2,7 @@
 
 **Multi-agent AI that resolves ride-hailing disputes fairly and fast.**
 
-**Live application:** [Open RydeResolve](https://124115d6579c4391bdde8c64401cb156.sg2.agentos-app.run/). To see a review, open a case such as **DISP-002** (no-show fee, full platform records) or **DR-2024-002** (route deviation) and click **Run review**; a review takes 15 seconds to about 2 minutes. Cases are kept in memory, so the app returns to its built-in sample cases whenever the server restarts.
+**Live application:** [Open RydeResolve](https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/). To see a review, open [**DISP-002**](https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/cases/case-003) (no-show fee, full platform records) or [**DR-2024-002**](https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/cases/case-002) (route deviation) and click **Run review**; a review takes 15 seconds to about 2 minutes. Cases are kept in memory, so the app returns to its built-in sample cases whenever the server restarts.
 
 Submission for the Tencent Cloud AI Singapore Hackathon 2026 · Digital Native Track · *Multi-Agent Autonomous Dispute Resolution System* (Ryde).
 

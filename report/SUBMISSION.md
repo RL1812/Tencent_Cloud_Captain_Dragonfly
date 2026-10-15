@@ -2,7 +2,7 @@
 
 **Fair, fast, explainable ride-hailing dispute resolution by multi-agent AI.**
 
-**Live application:** [Open RydeResolve](https://124115d6579c4391bdde8c64401cb156.sg2.agentos-app.run/)
+**Live application:** [Open RydeResolve](https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/)
 
 ---
 
@@ -433,4 +433,4 @@ Items marked **TO ADD** depend on teammates or on final screenshots and are inte
 | At least 3 chat screenshots from CodeBuddy / WorkBuddy | Done: 11 screenshots — two CodeBuddy chats and nine pages of the WorkBuddy conversation (also as one PDF) | `proof/screenshots/01-…` to `03-…`; `proof/screencapture-workbuddy-…pdf` |
 | Application screenshots | Done: DISP-003 (escalated to a human, S$6.66 refund held as a draft; retaken on 15 October 2026 under Policy v2.1) and DISP-002 (no-show; taken before Policy v2.1) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard (review queue, and sorted by priority); the submit page | `proof/screenshots/04-…` to `13-…` |
 | Demo video, 5–8 minutes (optional) | **TO ADD** | — |
-| Live project link (optional, earns bonus points) | Done: deployed with WorkBuddy on Tencent Cloud (Singapore region). Cases are kept in memory, so a server restart returns the app to its built-in sample cases | https://124115d6579c4391bdde8c64401cb156.sg2.agentos-app.run/ |
+| Live project link (optional, earns bonus points) | Done: deployed with WorkBuddy on Tencent Cloud (Singapore region). Cases are kept in memory, so a server restart returns the app to its built-in sample cases | https://7033b671b08c48dfa13fabb0bd803c7a.sg2.agentos-app.run/ |
