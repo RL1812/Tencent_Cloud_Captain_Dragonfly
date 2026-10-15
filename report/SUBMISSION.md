@@ -341,6 +341,7 @@ Proof of usage is collected in `proof/`:
 - `screenshots/01-codebuddy-write-report.png`, `screenshots/02-codebuddy-fix-report.png` — CodeBuddy sessions
 - `screenshots/03-workbuddy-chat-page-1.png` to `-9.png` — the WorkBuddy conversation above, one image per page (it shows WorkBuddy building the app and deploying it to Cloud Studio)
 - `Review the recent changes in dispute-review-agent_backend_src_modules_dispute_ag_20261014115706.json` — exported chat history of the code review session
+- `workbuddy-conversation-2026-10-15-deploy.json` — the full WorkBuddy session log (874 records, 15 October 2026) in which WorkBuddy deployed the app to the live link; copied from WorkBuddy's local session file with only API key values redacted
 
 ### Git history highlights
 
@@ -431,7 +432,7 @@ Every handbook item, required and optional, is now in place.
 | Cover image, 16:9 | Done | `report/cover/cover-380x216.png` (1520×855 master alongside) |
 | Source code | Done | GitHub repository, `main` branch |
 | Which tool wrote the core agents | Done: WorkBuddy and CodeBuddy, assisted by GPT, Gemini, Codex and Claude (as stated by the team) | Section 7 |
-| CodeBuddy / WorkBuddy conversation history | Done: two exported CodeBuddy chats | `proof/Review the recent changes in …json`; `proof/conversation_export_codebuddy.json` |
+| CodeBuddy / WorkBuddy conversation history | Done: two exported CodeBuddy chats and the WorkBuddy deployment session log | `proof/Review the recent changes in …json`; `proof/conversation_export_codebuddy.json`; `proof/workbuddy-conversation-2026-10-15-deploy.json` |
 | At least 3 chat screenshots from CodeBuddy / WorkBuddy | Done: 11 screenshots — two CodeBuddy chats and nine pages of the WorkBuddy conversation (also as one PDF) | `proof/screenshots/01-…` to `03-…`; `proof/screencapture-workbuddy-…pdf` |
 | Application screenshots | Done: DISP-003 (escalated to a human, S$6.66 refund held as a draft; retaken on 15 October 2026 under Policy v2.1) and DISP-002 (no-show; taken before Policy v2.1) each as case overview, rider-vs-driver advocates, and resolution with party messages; the human-decision form; the dashboard (review queue, and sorted by priority); the submit page | `proof/screenshots/04-…` to `13-…` |
 | Demo video, 5–8 minutes (optional) | Done | https://www.youtube.com/watch?v=rD7mKcZb83A |
