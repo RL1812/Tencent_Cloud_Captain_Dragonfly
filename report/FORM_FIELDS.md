@@ -10,6 +10,9 @@ Multi-agent AI that resolves ride-hailing disputes fairly and fast.
 
 _(Word count: 9.)_
 
+## Project link (optional, earns bonus points)
+https://124115d6579c4391bdde8c64401cb156.sg2.agentos-app.run/
+
 ## Project description
 The handbook asks for: project overview, real-world scenario, solution design (business and technical architecture, how prompts drive the AI) and business value. These are the four parts below.
 
